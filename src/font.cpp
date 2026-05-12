@@ -81,7 +81,7 @@ SysFont::SysFont(const char *family, const int flags)
   initPlatform();
 
   if(auto src {resolve()})
-    m_src = *src;
+    m_src = std::move(*src);
   else
     throw reascript_error {"cannot find a matching system font"};
 }
