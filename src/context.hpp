@@ -44,6 +44,8 @@ enum ConfigFlags {
 
 constexpr const char *REAIMGUI_PAYLOAD_TYPE_FILES {"_FILES"};
 
+using FrameCallback = void (*)(Context *);
+
 class Context final : public Resource {
 public:
   static constexpr unsigned char SUBRESOURCE_TTL {120};
@@ -57,6 +59,7 @@ public:
   // public api
   int userConfigFlags() const;
   void setUserConfigFlags(int);
+  void setFrameCallback(FrameCallback cb) { m_frameCallback = cb; }
   void attach(Resource *);
   void detach(Resource *);
 
@@ -123,6 +126,7 @@ private:
   ImGuiID m_id;
   char m_stateFlags;
   HCURSOR m_cursor;
+  FrameCallback m_frameCallback;
   std::chrono::time_point<std::chrono::steady_clock> m_lastFrame; // monotonic
   std::vector<std::string> m_draggedFiles;
   std::vector<Resource *> m_attachments;
@@ -139,5 +143,6 @@ private:
 template<> void *Context::touch(Resource *);
 
 API_REGISTER_OBJECT_TYPE(Context);
+API_REGISTER_TYPE(FrameCallback, "ImGui_FrameCallback");
 
 #endif

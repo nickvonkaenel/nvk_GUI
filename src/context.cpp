@@ -110,7 +110,7 @@ void Context::clearCurrent()
 }
 
 Context::Context(const char *label, const int userConfigFlags)
-  : m_id {ImHashStr(label)}, m_stateFlags {}, m_cursor {},
+  : m_id {ImHashStr(label)}, m_stateFlags {}, m_cursor {}, m_frameCallback {},
     m_lastFrame       {decltype(m_lastFrame)::clock::now()               },
     m_name            {label, ImGui::FindRenderedTextEnd(label)          },
     m_iniFilename     {generateIniFilename(m_id)                         },
@@ -256,6 +256,9 @@ bool Context::heartbeat()
   m_font->keepAlive();
   for(Resource *obj : m_attachments)
     obj->keepAlive();
+
+  if(m_frameCallback)
+    m_frameCallback(this);
 
   if(m_imgui->WithinFrameScope && !endFrame(true))
     return false;

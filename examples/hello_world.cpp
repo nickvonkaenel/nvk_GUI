@@ -39,7 +39,7 @@ public:
   ~Example();
 
 private:
-  static void loop();
+  static void loop(ImGui_Context *);
   static std::unique_ptr<Example> s_inst;
 
   Example();
@@ -50,7 +50,7 @@ private:
   char m_text[255];
 };
 
-constexpr const char *g_name { "ReaImGui C++ example" };
+constexpr const char *g_name {"ReaImGui C++ example"};
 static int g_actionId;
 std::unique_ptr<Example> Example::s_inst;
 
@@ -61,16 +61,16 @@ static void reportError(const ImGui_Error &e)
 
 Example::Example()
   : m_ctx {}, m_click_count {},
-    m_text { "The quick brown fox jumps over the lazy dog" }
+    m_text {"The quick brown fox jumps over the lazy dog"}
 {
   ImGui::init(plugin_getapi);
   m_ctx = ImGui::CreateContext(g_name);
-  plugin_register("timer", reinterpret_cast<void *>(&loop));
+  ImGui::SetFrameCallback(m_ctx, &loop);
 }
 
 Example::~Example()
 {
-  plugin_register("-timer", reinterpret_cast<void *>(&loop));
+  ImGui::SetFrameCallback(m_ctx, nullptr);
 }
 
 void Example::start()
@@ -85,7 +85,7 @@ catch(const ImGui_Error &e) {
   s_inst.reset();
 }
 
-void Example::loop()
+void Example::loop(ImGui_Context *)
 try {
   s_inst->frame();
 }

@@ -267,6 +267,8 @@ class ImGui_Resource;
 class ImGui_TextFilter;
 class ImGui_Viewport;
 
+using ImGui_FrameCallback = void (*)(ImGui_Context *);
+
 struct ImGui_Error : std::runtime_error {
   using runtime_error::runtime_error;
 };
@@ -472,13 +474,13 @@ static std::string zigType(const Type type, bool isOptional = false)
   else
     base = noptr;
 
-  if(type.isPointer() && !type.isString()) {
+  if(!type.isString()) {
     constexpr std::string_view prefix {"ImGui_"};
     if(base.substr(0, prefix.size()) == prefix) {
       base = base.substr(prefix.size()) + "Ptr";
       isOptional = false;
     }
-    else
+    else if(type.isPointer())
       base.insert(0, "*");
   }
 
@@ -498,6 +500,7 @@ pub const api_version = ")" << API_VERSION << R"(";
 
 pub const BitmapPtr           = ?*opaque {};
 pub const ContextPtr          = ?*opaque {};
+pub const FrameCallbackPtr    = ?*const fn(ContextPtr) callconv(.c) void;
 pub const DrawListPtr         = ?*opaque {};
 pub const DrawListSplitterPtr = ?*opaque {};
 pub const FontPtr             = ?*opaque {};
@@ -522,7 +525,7 @@ const API = struct {
       continue;
 
     stream << "  " << func.name << ": ";
-    stream << "*fn(";
+    stream << "*const fn(";
     CommaSep cs {stream};
     for(const Argument &arg : func.args)
       cs << zigType(arg.type, arg.isOptional());
@@ -571,7 +574,7 @@ const API = struct {
 
 
   stream << R"(
-var getError: ?*fn() callconv(.c) ?[*:0]const u8 = undefined;
+var getError: ?*const fn() callconv(.c) ?[*:0]const u8 = undefined;
 
 inline fn checkError() Error!void {
   @setRuntimeSafety(false);
@@ -580,15 +583,15 @@ inline fn checkError() Error!void {
     return error.ImGui;
 }
 
-inline fn getEnum(func: ?*fn() callconv(.c) c_int) c_int {
+inline fn getEnum(func: ?*const fn() callconv(.c) c_int) c_int {
   return if(func) |f| f() else 0;
 }
 
-pub fn init(plugin_getapi: *fn(name: [*:0]const u8) callconv(.c) ?*anyopaque) !void {
+pub fn init(plugin_getapi: *const fn(name: [*:0]const u8) callconv(.c) ?*anyopaque) !void {
   @setEvalBranchQuota(0x1000);
   @setRuntimeSafety(false);
 
-  const getFunc: ?*fn(v: [*:0]const u8, n: [*:0]const u8) callconv(.c) *anyopaque =
+  const getFunc: ?*const fn(v: [*:0]const u8, n: [*:0]const u8) callconv(.c) *anyopaque =
     @ptrCast(plugin_getapi("ImGui__getapi"));
   getError = @ptrCast(plugin_getapi("ImGui__geterr"));
 

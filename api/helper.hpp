@@ -130,6 +130,18 @@ struct DefVal<Tag<T, tags>> { using type = typename DefVal<T>::type; };
   };                                                             \
   _API_FUNC_DEF(vernum, type, name, args)
 
+#define API_FUNC_NATIVE _API_STORE_LINE _API_FUNC_NATIVE
+#define _API_FUNC_NATIVE(vernum, type, name, args, help)         \
+  _API_CHECKROOTSECTION                                          \
+  _API_FUNC_DECL(vernum, type, name, args, help)                 \
+  _API_EXPORT(NativeFunc, vernum, name) {                        \
+    API::v##vernum::name::meta::version,                         \
+    _API_DEF(vernum, name, true),                                \
+    reinterpret_cast<void *>(&API::v##vernum::name::impl),       \
+    {"-API_" API_PREFIX #name, _API_SAFECALL(vernum, name)},     \
+  };                                                             \
+  _API_FUNC_DEF(vernum, type, name, args)
+
 #define API_ENUM    _API_STORE_LINE _API_ENUM
 #define API_ENUM_NS _API_STORE_LINE _API_ENUM_NS
 #define _API_ENUM(vernum, name, doc) _API_ENUM_NS(vernum, ImGui, name, doc)

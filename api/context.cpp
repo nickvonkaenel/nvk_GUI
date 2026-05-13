@@ -322,6 +322,14 @@ API_FUNC(0_7, void, SetConfigVar, (Context*,ctx)
   }, g_configVars[var_idx]);
 }
 
+API_FUNC_NATIVE(0_11, void, SetFrameCallback, (Context*,ctx)(FrameCallback,func),
+R"(Calls the provided function once per frame before rendering if non-NULL.
+ImGui_FrameCallback is a `void (*)(ImGui_Context *)`.)")
+{
+  assertValid(ctx);
+  ctx->setFrameCallback(func);
+}
+
 API_SUBSECTION("Flags", "For CreateContext and SetConfigVar(ConfigVar_Flags()).");
 API_ENUM(0_1, ConfigFlags_None, "");
 API_ENUM(0_1, ConfigFlags_NavEnableKeyboard,

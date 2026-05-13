@@ -26,7 +26,7 @@ const reaper = struct { // @import("reaper");
   pub fn init(rec: *plugin_info_t) bool {
     if(rec.caller_version != PLUGIN_VERSION) {
       std.debug.print("expected REAPER API version {x}, got {x}\n",
-        .{ PLUGIN_VERSION, rec.caller_version });
+        .{PLUGIN_VERSION, rec.caller_version});
       return false;
     }
 
@@ -43,7 +43,7 @@ const reaper = struct { // @import("reaper");
       else if(is_optional)
         @field(@This(), decl.name) = null
       else {
-        std.debug.print("unable to import the API function '{s}'\n", .{ decl.name });
+        std.debug.print("unable to import the API function '{s}'\n", .{decl.name});
         return false;
       }
     }
@@ -51,9 +51,9 @@ const reaper = struct { // @import("reaper");
     return true;
   }
 
-  pub var plugin_register: *fn(name: [*:0]const u8, infostruct: *anyopaque) callconv(.c) c_int = undefined;
-  pub var plugin_getapi:   *fn(name: [*:0]const u8) callconv(.c) ?*anyopaque = undefined;
-  pub var ShowMessageBox:  *fn(body: [*:0]const u8, title: [*:0]const u8, flags: c_int) callconv(.c) void = undefined;
+  pub var plugin_register: *const fn(name: [*:0]const u8, infostruct: *anyopaque) callconv(.c) c_int = undefined;
+  pub var plugin_getapi:   *const fn(name: [*:0]const u8) callconv(.c) ?*anyopaque = undefined;
+  pub var ShowMessageBox:  *const fn(body: [*:0]const u8, title: [*:0]const u8, flags: c_int) callconv(.c) void = undefined;
 };
 
 const plugin_name = "Hello, Zig!";
@@ -63,54 +63,55 @@ var click_count: u32 = 0;
 var text = std.mem.zeroes([255:0]u8);
 
 fn loop() !void {
-  if(ctx == null) {
-    try ImGui.init(reaper.plugin_getapi);
-    ctx = try ImGui.CreateContext(.{ plugin_name });
-  }
-
-  try ImGui.SetNextWindowSize(.{ ctx, 400, 80, ImGui.Cond_FirstUseEver });
+  try ImGui.SetNextWindowSize(.{ctx, 400, 80, ImGui.Cond_FirstUseEver});
 
   var open: bool = true;
-  if(try ImGui.Begin(.{ ctx, plugin_name, &open })) {
-    if(try ImGui.Button(.{ ctx, "Click me!" }))
+  if(try ImGui.Begin(.{ctx, plugin_name, &open})) {
+    if(try ImGui.Button(.{ctx, "Click me!"}))
       click_count +%= 1;
 
     if(click_count & 1 != 0) {
-      try ImGui.SameLine(.{ ctx });
-      try ImGui.Text(.{ ctx, "\\o/" });
+      try ImGui.SameLine(.{ctx});
+      try ImGui.Text(.{ctx, "\\o/"});
     }
 
-    _ = try ImGui.InputText(.{ ctx, "text input", &text, text.len });
-    try ImGui.End(.{ ctx });
+    _ = try ImGui.InputText(.{ctx, "text input", &text, text.len});
+    try ImGui.End(.{ctx});
   }
 
   if(!open)
     reset();
 }
 
-fn init() void {
-  _ = reaper.plugin_register("timer", @constCast(@ptrCast(&onTimer)));
+fn init() !void {
+  try ImGui.init(reaper.plugin_getapi);
+  ctx = try ImGui.CreateContext(.{plugin_name});
+  try ImGui.SetFrameCallback(.{ctx, &onTimer});
 }
 
 fn reset() void {
-  _ = reaper.plugin_register("-timer", @constCast(@ptrCast(&onTimer)));
+  ImGui.SetFrameCallback(.{ctx, null}) catch {};
   ctx = null;
 }
 
-fn onTimer() callconv(.c) void {
+fn onTimer(_: ImGui.ContextPtr) callconv(.c) void {
   loop() catch {
     reset();
-    reaper.ShowMessageBox(ImGui.last_error.?, plugin_name, 0);
+    onError();
   };
+}
+
+fn onError() void {
+  reaper.ShowMessageBox(ImGui.last_error.?, plugin_name, 0);
 }
 
 fn onCommand(sec: *reaper.KbdSectionInfo, command: c_int, val: c_int,
   val2hw: c_int, relmode: c_int, hwnd: reaper.HWND) callconv(.c) c_char
 {
-  _ = .{ sec, val, val2hw, relmode, hwnd };
+  _ = .{sec, val, val2hw, relmode, hwnd};
 
   if(command == action_id) {
-    if(ctx == null) init() else reset();
+    if(ctx == null) init() catch onError() else reset();
     return 1;
   }
 
@@ -126,7 +127,7 @@ export fn ReaperPluginEntry(instance: reaper.HINSTANCE, rec: ?*reaper.plugin_inf
     return 0;
 
   const action = reaper.custom_action_register_t
-    { .section = 0, .id_str = "REAIMGUI_ZIG", .name = "ReaImGui Zig example" };
+    {.section = 0, .id_str = "REAIMGUI_ZIG", .name = "ReaImGui Zig example"};
   action_id = reaper.plugin_register("custom_action", @constCast(@ptrCast(&action)));
   _ = reaper.plugin_register("hookcommand2", @constCast(@ptrCast(&onCommand)));
 

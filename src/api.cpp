@@ -172,9 +172,7 @@ constexpr bool isDefConstant(const char *definition)
 }
 
 ReaScriptFunc::ReaScriptFunc(const VerNum version, void *impl,
-                             const PluginRegisterBase &native,
-                             const PluginRegisterBase &reascript,
-                             const PluginRegisterBase &desc)
+  PluginRegisterBase native, PluginRegisterBase reascript, PluginRegisterBase desc)
   : Callable {version, VerNum::MAX, extractRegName(native)},
     Symbol {TargetNative | TargetScript |
       (isDefConstant(desc.value<const char *>()) ? Constant : 0)},
@@ -191,6 +189,24 @@ void ReaScriptFunc::announce(const bool init) const
 const char *ReaScriptFunc::name() const
 {
   return extractRegName(m_regs[0]);
+}
+
+NativeFunc::NativeFunc(const VerNum version,
+    const char *def, void *impl, PluginRegisterBase reg)
+  : Callable {version, VerNum::MAX, extractRegName(reg)},
+    Symbol {TargetNative | (isDefConstant(def) ? Constant : 0)},
+    m_def {def}, m_impl {impl}, m_reg {reg}
+{
+}
+
+void NativeFunc::announce(const bool init) const
+{
+  m_reg.announce(init);
+}
+
+const char *NativeFunc::name() const
+{
+  return extractRegName(m_reg);
 }
 
 EELFunc::EELFunc(const VerNum version, const char *name, const char *definition,

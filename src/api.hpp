@@ -96,10 +96,8 @@ namespace API {
 
   class ReaScriptFunc final : public Callable, public Symbol {
   public:
-    ReaScriptFunc(VerNum availableSince, void *impl,
-                  const PluginRegisterBase &native,
-                  const PluginRegisterBase &reascript,
-                  const PluginRegisterBase &desc);
+    ReaScriptFunc(VerNum availableSince, void *impl, PluginRegisterBase native,
+      PluginRegisterBase reascript, PluginRegisterBase desc);
     void announce(bool) const override;
 
     void *safeImpl()   const override { return m_regs[0].value(); }
@@ -114,6 +112,27 @@ namespace API {
   private:
     void *m_impl;
     PluginRegisterBase m_regs[3]; // native, reascript, definition
+  };
+
+  class NativeFunc final : public Callable, public Symbol {
+  public:
+    NativeFunc(VerNum availableSince,
+      const char *def, void *impl, PluginRegisterBase native);
+    void announce(bool) const override;
+
+    void *safeImpl()   const override { return m_reg.value(); }
+    void *unsafeImpl() const override { return m_impl; }
+
+    const char *name() const override;
+    const char *definition() const override {
+      return static_cast<const char *>(m_def); }
+    VerNum version()  const override { return Callable::version(); }
+    bool isConstant() const override { return m_flags & Constant;  }
+
+  private:
+    const char *m_def;
+    void *m_impl;
+    PluginRegisterBase m_reg;
   };
 
   class ShimFunc final : public Callable {
