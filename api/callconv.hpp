@@ -35,7 +35,7 @@ struct ReaScript<fn>
 {
   static const void *apply(void **argv, const int argc)
   {
-    if(static_cast<size_t>(argc) < sizeof...(Args))
+    if(static_cast<size_t>(argc) < sizeof...(Args) + std::is_floating_point_v<R>)
       return nullptr;
 
     const auto &args {makeTuple(argv, std::index_sequence_for<Args...>{})};
