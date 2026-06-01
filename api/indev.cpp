@@ -50,12 +50,12 @@ API_FUNC(0_1, double, GetMouseDownDuration, (Context*,ctx)
 }
 
 API_FUNC(0_1, bool, IsMouseClicked, (Context*,ctx)
-(int,button) (RO<bool*>,repeat,false),
+(int,button) (RO<bool*>,repeat_enable,false),
 R"(Did mouse button clicked? (went from !Down to Down).
 Same as GetMouseClickedCount() == 1.)")
 {
   FRAME_GUARD;
-  return ImGui::IsMouseClicked(button, API_GET(repeat));
+  return ImGui::IsMouseClicked(button, API_GET(repeat_enable));
 }
 
 API_FUNC(0_1, void, GetMouseClickedPos, (Context*,ctx)
@@ -281,12 +281,12 @@ API_FUNC(0_9, double, GetKeyDownDuration, (Context*,ctx)
 }
 
 API_FUNC(0_9, bool, IsKeyPressed, (Context*,ctx)
-(int,key) (RO<bool*>,repeat,true),
+(int,key) (RO<bool*>,repeat_enable,true),
 R"(Was key pressed (went from !Down to Down)?
-If repeat=true, uses ConfigVar_KeyRepeatDelay / ConfigVar_KeyRepeatRate.)")
+If repeat_enable is set, uses ConfigVar_KeyRepeatDelay / ConfigVar_KeyRepeatRate.)")
 {
   FRAME_GUARD;
-  return ImGui::IsKeyPressed(static_cast<ImGuiKey>(key), API_GET(repeat));
+  return ImGui::IsKeyPressed(static_cast<ImGuiKey>(key), API_GET(repeat_enable));
 }
 
 API_FUNC(0_9, bool, IsKeyReleased, (Context*,ctx)
