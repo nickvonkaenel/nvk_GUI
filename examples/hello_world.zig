@@ -1,4 +1,4 @@
-// zig build-lib -dynamic -O ReleaseFast -femit-bin=reaper_zig.so hello_world.zig
+// zig build-lib -dynamic -femit-bin=reaper_zig.so -fentry=ReaperPluginEntry --dep reaper_imgui -Mmain=hello_world.zig -Mreaper_imgui=reaper_imgui.zig
 
 const std = @import("std");
 const ImGui = @import("reaper_imgui");
