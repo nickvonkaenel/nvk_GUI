@@ -5,7 +5,7 @@
 //
 // 1. Grab reaper_plugin.h from https://github.com/justinfrankel/reaper-sdk/raw/main/sdk/reaper_plugin.h
 // 2. Grab reaper_plugin_functions.h by running the REAPER action "[developer] Write C++ API functions header"
-// 3. Grab reaper_imgui_functions.h from https://github.com/cfillion/reaimgui/releases
+// 3. Grab reaper_imgui_functions.h from https://codeberg.org/cfillion/reaimgui/releases
 // 4. Grab WDL: git clone https://github.com/justinfrankel/WDL.git
 // 5. Build then copy or link the binary file into <REAPER resource directory>/UserPlugins
 //

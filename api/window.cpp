@@ -591,11 +591,11 @@ Display ReaImGui version, Dear ImGui version, credits and build/system informati
     if(ImGui::TextLink("Documentation"))
       openDocumentation();
     ImGui::SameLine();
-    ImGui::TextLinkOpenURL("Bug tracker", "https://github.com/cfillion/reaimgui/issues");
+    ImGui::TextLinkOpenURL("Bug tracker", "https://codeberg.org/cfillion/reaimgui/issues");
     ImGui::SameLine();
     ImGui::TextLinkOpenURL("Donate", "https://reapack.com/donate");
     ImGui::Separator();
-    ImGui::TextUnformatted("(c) 2021-2025 Christian Fillion");
+    ImGui::Text("(c) 2021-%s Christian Fillion", __DATE__ + 7);
     ImGui::TextUnformatted("Developed by Christian Fillion and contributors.");
     ImGui::TextUnformatted("ReaImGui is licensed under the LGPL v3 or later.");
     ImGui::NewLine();

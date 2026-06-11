@@ -1229,8 +1229,8 @@ static void humanBinding(std::ostream &stream)
 
     <p>
       <a href="https://forum.cockos.com/showthread.php?t=250419">Forum thread</a>
-      &middot; <a href="https://github.com/cfillion/reaimgui">Source repository</a>
-      &middot; <a href="https://github.com/cfillion/reaimgui/issues">Issue tracker</a>
+      &middot; <a href="https://codeberg.org/cfillion/reaimgui">Source repository</a>
+      &middot; <a href="https://codeberg.org/cfillion/reaimgui/issues">Issue tracker</a>
     </p><hr/>)";
 
   std::vector<const API::Section *> sections;
@@ -1320,7 +1320,7 @@ static void humanBinding(std::ostream &stream)
       outputMarkdown(stream, func.doc);
 
     stream << "<p class=\"meta\">"
-              "<a href=\"https://github.com/cfillion/reaimgui/blob/v"
+              "<a href=\"https://codeberg.org/cfillion/reaimgui/src/tag/v"
               REAIMGUI_VERSION "/api/" << func.section->file << ".cpp#L"
            << func.line << "\">View source</a>"
            << " &middot; v" << func.version.toString() << "+</p>";

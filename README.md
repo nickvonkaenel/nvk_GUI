@@ -43,7 +43,7 @@ Additional system dependencies on Linux:
 
 Fetch the repository including submodules:
 
-    $ git clone --recursive --shallow-submodules https://github.com/cfillion/reaimgui.git
+    $ git clone --recursive --shallow-submodules https://codeberg.org/cfillion/reaimgui.git
 
 Build ReaImGui using Meson:
 
