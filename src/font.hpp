@@ -32,6 +32,7 @@ enum FontFlags {
   ReaImGuiFontFlags_None   = 0,
   ReaImGuiFontFlags_Bold   = 1<<8,
   ReaImGuiFontFlags_Italic = 1<<9,
+  ReaImGuiFontFlags_SystemFallback = 1<<10,
 };
 
 class Font;
@@ -84,6 +85,7 @@ public:
     *SERIF      {"serif"};
 
   SysFont(const char *family, int style = 0);
+  SysFont(FontSource &&, int style); // custom primary source + system fallback
   void addFallback(ImFontAtlas *, ImFont *, unsigned int codepoint);
 
 private:
