@@ -86,6 +86,13 @@ SysFont::SysFont(const char *family, const int flags)
     throw reascript_error {"cannot find a matching system font"};
 }
 
+SysFont::SysFont(FontSource &&src, const int style)
+  : Font {}, m_family {SANS_SERIF}, m_styles {style}
+{
+  initPlatform();
+  m_src = std::move(src);
+}
+
 void SysFont::addFallback(ImFontAtlas *atlas, ImFont *inst, unsigned int codepoint)
 {
   // ImGui always requests a tab from ImFontAtlasBuildSetupFontBakedBlanks which

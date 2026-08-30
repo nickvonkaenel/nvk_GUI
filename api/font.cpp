@@ -35,10 +35,14 @@ See CreateFontFromFile.)")
   return new SysFont {family, API_GET(flags)};
 }
 
+constexpr int FontFlags_StyleMask
+  {ReaImGuiFontFlags_Bold | ReaImGuiFontFlags_Italic};
+
 API_FUNC(0_10, Font*, CreateFontFromFile,
 (const char*,file) (RO<int*>,index,0) (RO<int*>,flags,ReaImGuiFontFlags_None),
 R"(Load a font from a file. Available characters are limited to those
-contained in the file.
+contained in the file unless FontFlags_SystemFallback is set in 'flags',
+in which case missing glyphs are loaded from matching system fonts.
 
 Bits 0-15 of 'index' are the the index of the face in the font file (starting
 from 0). Set to 0 if the font file contains only one font face.
@@ -49,8 +53,14 @@ named instance index for the current face index (starting from 1).
 The font styles in 'flags' are simulated by the rasterizer.
 See also CreateFontFromMem.)")
 {
-  return new Font {file,
-    static_cast<unsigned int>(API_GET(index)), API_GET(flags)};
+  const int fontFlags {API_GET(flags)};
+  const auto faceIndex {static_cast<unsigned int>(API_GET(index))};
+  if(fontFlags & ReaImGuiFontFlags_SystemFallback) {
+    return new SysFont {
+      FontSource {file, faceIndex, fontFlags & FontFlags_StyleMask},
+      fontFlags & FontFlags_StyleMask};
+  }
+  return new Font {file, faceIndex, fontFlags};
 }
 
 API_FUNC(0_10, Font*, CreateFontFromMem,
@@ -64,8 +74,15 @@ See CreateFontFromFile for the meaning of 'index' and 'flags'.)")
   std::vector<unsigned char> buffer;
   buffer.reserve(data_sz);
   std::copy(data, data + data_sz, std::back_inserter(buffer));
-  return new Font {std::move(buffer),
-    static_cast<unsigned int>(API_GET(index)), API_GET(flags)};
+  const int fontFlags {API_GET(flags)};
+  const auto faceIndex {static_cast<unsigned int>(API_GET(index))};
+  if(fontFlags & ReaImGuiFontFlags_SystemFallback) {
+    return new SysFont {
+      FontSource {std::move(buffer), faceIndex,
+                  fontFlags & FontFlags_StyleMask},
+      fontFlags & FontFlags_StyleMask};
+  }
+  return new Font {std::move(buffer), faceIndex, fontFlags};
 }
 
 API_FUNC(0_4, Font*, GetFont, (Context*,ctx),
@@ -106,3 +123,6 @@ applied. See also GetTextLineHeight and GetFrameHeight.)")
 API_ENUM_NS(0_4, ReaImGui, FontFlags_None,   "");
 API_ENUM_NS(0_4, ReaImGui, FontFlags_Bold,   "");
 API_ENUM_NS(0_4, ReaImGui, FontFlags_Italic, "");
+API_ENUM_NS(0_10, ReaImGui, FontFlags_SystemFallback,
+"Load missing glyphs from matching system fonts "
+"(CreateFontFromFile/CreateFontFromMem only).");

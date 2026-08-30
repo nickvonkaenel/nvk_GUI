@@ -576,7 +576,7 @@ void openDocumentation();
 API_FUNC(0_5_4, void, ShowAboutWindow, (Context*,ctx)
 (RWO<bool*>,p_open),
 R"(Create About window.
-Display ReaImGui version, Dear ImGui version, credits and build/system information.)")
+Display nvk_GUI version, Dear ImGui version, credits and build/system information.)")
 {
   FRAME_GUARD;
 
