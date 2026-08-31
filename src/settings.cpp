@@ -34,7 +34,7 @@
 #include <WDL/wdltypes.h> // WDL_DLGRET
 #include <WDL/wingui/wndsize.h>
 
-#define L10N(str) __localizeFunc(str, "REAIMGUI_DLG_100", 0)
+#define L10N(str) __localizeFunc(str, "NVKGUI_DLG_100", 0)
 
 template<typename T>
 struct Setting;
@@ -168,7 +168,7 @@ constexpr SettingVariant<bool, const RendererType *> SETTINGS[] {
   },
 };
 
-constexpr const TCHAR *SECTION {TEXT("reaimgui")};
+constexpr const TCHAR *SECTION {TEXT("nvkgui")};
 
 template<>
 void Setting<bool>::read(const TCHAR *file) const
@@ -375,7 +375,7 @@ static void resetDefaults(HWND hwnd)
 {
   if(IDOK != MessageBox(hwnd,
       WIDEN(L10N("Are you sure you want to restore the default settings?")),
-      WIDEN(L10N("ReaImGui settings")),
+      WIDEN(L10N("NvkGui settings")),
       MB_OKCANCEL | MB_ICONWARNING))
     return;
 
@@ -462,7 +462,7 @@ static HWND create(HWND parent)
 }
 
 static prefs_page_register_t g_page {
-  "reaimgui", "ReaImGui", &create,
+  "nvkgui", "NvkGui", &create,
   0x9a, "", // parent page ID (Plug-ins, unknown parent idstr)
   0,        // won't have children
 };

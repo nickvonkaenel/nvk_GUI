@@ -30,7 +30,7 @@
 Docker::Docker(const ReaDockID id)
   : m_id {id}
 {
-  snprintf(m_windowTitle, sizeof(m_windowTitle), "reaimgui_docker_%X", id);
+  snprintf(m_windowTitle, sizeof(m_windowTitle), "nvkgui_docker_%X", id);
   m_windowId = ImHashStr(m_windowTitle);
 }
 

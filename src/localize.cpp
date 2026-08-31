@@ -21,7 +21,7 @@
 
 #include <reaper_plugin_secrets.h>
 
-#define PREFIX "REAIMGUI_"
+#define PREFIX "NVKGUI_"
 
 int DialogBoxParamL(
   HINSTANCE inst, const TCHAR *tpl, HWND parent, DLGPROC proc, LPARAM param)
