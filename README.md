@@ -1,3 +1,28 @@
+# NvkGui: private ReaImGui fork for nvk scripts
+
+A renamed fork of [ReaImGui](https://codeberg.org/cfillion/reaimgui) that
+**coexists** with the stock extension: it registers its API as
+`NvkGui_*`, ships as `reaper_nvkgui`, installs its Lua wrapper as
+`Scripts/nvk/API/nvkgui.lua`, and keeps all of its on-disk and registered
+state (ini files, screensets, action IDs, prefs page, ObjC classes) under
+its own names. Stock ReaImGui keeps serving third-party scripts; our
+scripts depend on this fork. Requires REAPER 7.28+.
+
+Branch layout:
+- `main` — the fork: upstream + our patch series (rebrand first, then
+  functional changes).
+- `master` — tracks `upstream/master` (cfillion's Codeberg). To pull
+  upstream changes: `git fetch upstream && git checkout master &&
+  git merge --ff-only upstream/master && git checkout main &&
+  git merge master`, then run `tools/rebrand_check.sh` and the
+  coexistence smoke test (stock + fork loaded in one REAPER instance).
+
+Licensed under the LGPL v3 or later, like upstream (see COPYING.LESSER).
+
+---
+
+Original upstream README follows.
+
 # ReaImGui: ReaScript binding for Dear ImGui
 
 [![Build status](https://ci.appveyor.com/api/projects/status/9umkecgrs4sa8odf/branch/master?svg=true)](https://ci.appveyor.com/project/cfillion/reaimgui/branch/master)
