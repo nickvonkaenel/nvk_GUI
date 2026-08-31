@@ -595,7 +595,7 @@ Display nvk_GUI version, Dear ImGui version, credits and build/system informatio
     ImGui::SameLine();
     ImGui::TextLinkOpenURL("Donate", "https://reapack.com/donate");
     ImGui::Separator();
-    ImGui::Text("(c) 2021-%s Christian Fillion", __DATE__ + 7);
+    ImGui::Text("(c) 2021-%s Christian Fillion", &__DATE__[7]);
     ImGui::TextUnformatted("Developed by Christian Fillion and contributors.");
     ImGui::TextUnformatted("nvk_GUI is a fork of ReaImGui, "
                            "licensed under the LGPL v3 or later.");
