@@ -30,6 +30,7 @@
 #include "win32_unicode.hpp"
 #include "window.hpp"
 
+#include <cstdlib>
 #include <imgui/imgui.h>
 #include <WDL/wdltypes.h> // WDL_DIRCHAR_STR
 
@@ -125,6 +126,23 @@ static bool loadAPI(void *(*getFunc)(const char *))
   return true;
 }
 
+static bool meetsReaperVersionFloor()
+{
+  // REAPER 7.28+ exposes __reascript_runcnt so detecting blocked defer
+  // loops never needs to subclass the main window procedure. Two plugins
+  // chain-subclassing it (stock ReaImGui + this fork) would leak on
+  // teardown, so refuse to load on anything older.
+  if(atof(GetAppVersion()) >= 7.28)
+    return true;
+
+  char message[255];
+  snprintf(message, sizeof(message),
+    "NvkGui v%s requires REAPER 7.28 or newer (current version: %s).",
+    REAIMGUI_VERSION, GetAppVersion());
+  fatalError(message);
+  return false;
+}
+
 static bool isAlreadyLoaded()
 {
   if(plugin_getapi(API_PREFIX "GetVersion")) {
@@ -154,7 +172,8 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(
     return 0;
   }
   else if(rec->caller_version != REAPER_PLUGIN_VERSION ||
-      !loadAPI(rec->GetFunc) || isAlreadyLoaded())
+      !loadAPI(rec->GetFunc) || !meetsReaperVersionFloor() ||
+      isAlreadyLoaded())
     return 0;
 
   IMGUI_CHECKVERSION();
