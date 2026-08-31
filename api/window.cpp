@@ -597,7 +597,8 @@ Display nvk_GUI version, Dear ImGui version, credits and build/system informatio
     ImGui::Separator();
     ImGui::Text("(c) 2021-%s Christian Fillion", __DATE__ + 7);
     ImGui::TextUnformatted("Developed by Christian Fillion and contributors.");
-    ImGui::TextUnformatted("ReaImGui is licensed under the LGPL v3 or later.");
+    ImGui::TextUnformatted("nvk_GUI is a fork of ReaImGui, "
+                           "licensed under the LGPL v3 or later.");
     ImGui::NewLine();
     ImGui::Separator();
   }

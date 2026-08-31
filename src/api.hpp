@@ -21,7 +21,7 @@
 #include "plugin_register.hpp"
 #include "vernum.hpp"
 
-#define API_PREFIX "ImGui_"
+#define API_PREFIX "NvkGui_"
 
 class imgui_error;
 class reascript_error;

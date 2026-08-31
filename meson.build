@@ -1,4 +1,4 @@
-project('reaimgui', 'cpp',
+project('nvkgui', 'cpp',
   version: 'unknown',
   meson_version: '>= 1.1',
   default_options: [
@@ -182,7 +182,7 @@ subdir('api')
 subdir('shims')
 subdir('src')
 
-reaimgui = shared_library('reaper_imgui-' + arch_suffix, win32_resources,
+reaimgui = shared_library('reaper_nvkgui-' + arch_suffix, win32_resources,
   link_whole: [api, shims, src],
   name_prefix: '',
   install: true,

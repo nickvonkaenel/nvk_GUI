@@ -36,7 +36,7 @@
 static void fatalError(const char *message)
 {
   HWND parent {Splash_GetWnd ? Splash_GetWnd() : nullptr};
-  MessageBox(parent, WIDEN(message), TEXT("ReaImGui (reaper_imgui)"),
+  MessageBox(parent, WIDEN(message), TEXT("nvk_GUI (reaper_nvkgui)"),
     MB_OK | MB_ICONERROR);
 }
 
@@ -115,7 +115,7 @@ static bool loadAPI(void *(*getFunc)(const char *))
 
     char message[1024];
     snprintf(message, sizeof(message),
-      "ReaImGui v%s is incompatible with this version of REAPER.\n\n"
+      "nvk_GUI v%s is incompatible with this version of REAPER.\n\n"
       "Unable to import the following API function: %s.",
       REAIMGUI_VERSION, func.name);
     fatalError(message);
@@ -127,8 +127,8 @@ static bool loadAPI(void *(*getFunc)(const char *))
 
 static bool isAlreadyLoaded()
 {
-  if(plugin_getapi("ImGui_GetVersion")) {
-    fatalError("More than one copy of ReaImGui are currently installed. "
+  if(plugin_getapi(API_PREFIX "GetVersion")) {
+    fatalError("More than one copy of nvk_GUI are currently installed. "
                "Only one will be loaded.");
     return true;
   }

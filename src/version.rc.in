@@ -16,13 +16,13 @@ BEGIN
   BEGIN
     BLOCK "040904B0"
     BEGIN
-      VALUE "ProductName",     "ReaImGui"
+      VALUE "ProductName",     "nvk_GUI"
       VALUE "CompanyName",     "https://cfillion.ca"
       VALUE "FileDescription", "REAPER plug-in extension"
       VALUE "FileVersion",      REAIMGUI_VERSION
       VALUE "ProductVersion",   REAIMGUI_VERSION
-      VALUE "OriginalFilename", "reaper_imgui-@REAIMGUI_ARCH@.dll"
-      VALUE "InternalName",     "reaper_imgui-@REAIMGUI_ARCH@"
+      VALUE "OriginalFilename", "reaper_nvkgui-@REAIMGUI_ARCH@.dll"
+      VALUE "InternalName",     "reaper_nvkgui-@REAIMGUI_ARCH@"
       VALUE "LegalCopyright",   "Copyright (C) Christian Fillion"
     END
   END

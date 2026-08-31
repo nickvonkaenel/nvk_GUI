@@ -29,7 +29,7 @@ static void assertVersion(const VerNum requested)
     return;
 
   throw reascript_error {
-    "ReaImGui {} is too old (action requires API {} or newer)",
+    "nvk_GUI {} is too old (action requires API {} or newer)",
     REAIMGUI_VERSION, requested.toString()
   };
 }
