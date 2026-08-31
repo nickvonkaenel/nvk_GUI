@@ -18,6 +18,8 @@
 #ifndef REAIMGUI_COCOA_INPUTVIEW_HPP
 #define REAIMGUI_COCOA_INPUTVIEW_HPP
 
+#include "objc_prefix.h"
+
 #include <AppKit/AppKit.h>
 
 class Window;

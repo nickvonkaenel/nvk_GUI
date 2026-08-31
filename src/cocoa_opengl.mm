@@ -18,6 +18,7 @@
 #include "opengl_renderer.hpp"
 
 #include "error.hpp"
+#include "objc_prefix.h"
 #include "window.hpp"
 
 #define GL_SILENCE_DEPRECATION

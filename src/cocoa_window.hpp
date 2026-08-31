@@ -18,6 +18,8 @@
 #ifndef REAIMGUI_COCOA_WINDOW_HPP
 #define REAIMGUI_COCOA_WINDOW_HPP
 
+#include "objc_prefix.h"
+
 #include "window.hpp"
 
 @class EventHandler;

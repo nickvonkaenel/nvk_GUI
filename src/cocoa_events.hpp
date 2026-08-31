@@ -18,6 +18,8 @@
 #ifndef REAIMGUI_COCOA_EVENTS_HPP
 #define REAIMGUI_COCOA_EVENTS_HPP
 
+#include "objc_prefix.h"
+
 #include <AppKit/AppKit.h>
 
 class Context;
