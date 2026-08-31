@@ -638,7 +638,7 @@ int main()
 
   Dialog {IDD_SETTINGS, "", 0, 0, 319, 240,
           DS_CONTROL | WS_CHILD, WS_EX_CONTROLPARENT,
-    GroupBox {IDC_GROUPBOX, "ReaImGui settings", VLayout {
+    GroupBox {IDC_GROUPBOX, "nvk_GUI settings", VLayout {
       CheckBox {IDC_SAVEDSETTINGS, ""},
       Spacing {},
 
@@ -679,7 +679,7 @@ int main()
     Text  {IDC_MESSAGE, "\n\n"},
     EditText {IDC_REPORT, 0, 0, WS_VSCROLL | ES_MULTILINE | ES_READONLY},
     HLayout {
-      Button {IDC_SETTINGS, "ReaImGui &settings...", 80},
+      Button {IDC_SETTINGS, "nvk_GUI &settings...", 80},
       HLayout {Align::End, {
         Button {IDC_PREV, "←"},
         Button {IDC_NEXT, "→"},

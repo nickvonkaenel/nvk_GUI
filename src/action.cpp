@@ -86,11 +86,11 @@ void Action::refreshAll()
 
 Action::Action(const std::string &name, const std::string &desc,
                const RunFunc &run, const StateFunc &getState)
-  : m_name {"REAIMGUI_"s + name}, m_desc {"ReaImGui: "s + desc},
+  : m_name {"NVKGUI_"s + name}, m_desc {"nvk_GUI: "s + desc},
     m_cmd {}, m_run {run}, m_getState {getState}
 {
   const char *localizedDesc =
-    __localizeFunc(m_desc.c_str(), "REAIMGUI_ACTION", LOCALIZE_NOCACHE);
+    __localizeFunc(m_desc.c_str(), "NVKGUI_ACTION", LOCALIZE_NOCACHE);
   m_cmd.accel.cmd =
     plugin_register("command_id", const_cast<char *>(m_name.c_str()));
   m_cmd.desc = localizedDesc;

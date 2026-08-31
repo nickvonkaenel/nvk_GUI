@@ -85,7 +85,7 @@ static std::string generateIniFilename(const ImGuiID id)
 {
   std::string filename {GetResourcePath()};
 
-  filename += WDL_DIRCHAR_STR "ReaImGui";
+  filename += WDL_DIRCHAR_STR "nvk_GUI";
   RecursiveCreateDirectory(filename.c_str(), 0);
 
   const size_t pathSize {filename.size()}, idSize {sizeof(id) * 2};
@@ -123,7 +123,7 @@ Context::Context(const char *label, const int userConfigFlags)
     throw reascript_error {"context label is required"};
 
   static const std::string logFn
-    {std::string {GetResourcePath()} + WDL_DIRCHAR_STR "imgui_log.txt"};
+    {std::string {GetResourcePath()} + WDL_DIRCHAR_STR "nvkgui_log.txt"};
 
   setCurrent();
 
@@ -751,7 +751,7 @@ bool Context::isAnyKeyDown() const
 
 std::string Context::screensetKey() const
 {
-  return std::format("reaimgui:{:0{}X}", m_id, sizeof(m_id) * 2);
+  return std::format("nvkgui:{:0{}X}", m_id, sizeof(m_id) * 2);
 }
 
 LRESULT Context::screensetProc(const int action, const char *id,
