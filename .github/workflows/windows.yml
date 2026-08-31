@@ -1,0 +1,62 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0 # genversion derives the build version from git describe
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+
+      - uses: ilammy/setup-nasm@v1 # libjpeg-turbo SIMD
+
+      - name: Install meson and ninja
+        run: pip install meson==1.8.3 ninja
+
+      - name: Install Boost headers
+        run: |
+          nuget install boost -Version 1.87.0 -OutputDirectory "$env:RUNNER_TEMP\boost"
+          "BOOST_ROOT=$env:RUNNER_TEMP\boost\boost.1.87.0\lib\native\include" >> $env:GITHUB_ENV
+
+      - name: Cache meson subprojects
+        uses: actions/cache@v4
+        with:
+          path: subprojects/packagecache
+          key: subprojects-${{ hashFiles('subprojects/*.wrap') }}
+
+      - name: Configure
+        run: meson setup build --buildtype=debugoptimized
+
+      - name: Build
+        run: ninja -C build
+
+      - name: Test
+        run: meson test -vC build nvkgui
+
+      - name: Rebrand check
+        shell: bash
+        run: ./tools/rebrand_check.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nvkgui-windows-${{ matrix.arch }}
+          path: |
+            build/reaper_nvkgui-*.dll
+            build/reaper_nvkgui-*.pdb
+            build/nvkgui.py
+            build/reaper_nvkgui_doc.html
+            shims/nvkgui.lua
