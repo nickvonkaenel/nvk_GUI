@@ -93,11 +93,11 @@ types (indentation represents inheritance):
 #undef RESOURCEPROXY_ISVALID
 
 API_FUNC(0_9, const char*, GetBuiltinPath, API_NO_ARGS,
-"Returns the path to the directory containing imgui.lua, imgui.py and gfx2imgui.lua.")
+"Returns the path to the directory containing nvkgui.lua and nvkgui.py.")
 {
   static const std::string output {
     std::string {GetResourcePath()} +
-    WDL_DIRCHAR_STR "Scripts" WDL_DIRCHAR_STR "ReaTeam Extensions"
+    WDL_DIRCHAR_STR "Scripts" WDL_DIRCHAR_STR "nvk"
     WDL_DIRCHAR_STR "API"
   };
 

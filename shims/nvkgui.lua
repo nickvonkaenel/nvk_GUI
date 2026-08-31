@@ -1,10 +1,10 @@
 -- Usage:
--- package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
--- local ImGui = require 'imgui' 'API version (eg. 0.9)'
+-- package.path = reaper.NvkGui_GetBuiltinPath() .. '/?.lua'
+-- local ImGui = require 'nvkgui' 'API version (eg. 0.9)'
 
 local error,  pcall = error, pcall
-local unpack,  init = string.unpack, reaper.ImGui__init
-local setshim, shim = reaper.ImGui__setshim, reaper.ImGui__shim
+local unpack,  init = string.unpack, reaper.NvkGui__init
+local setshim, shim = reaper.NvkGui__setshim, reaper.NvkGui__shim
 
 local function shimResult(level, ok, ...)
   if not ok then error(..., level) end
@@ -30,7 +30,7 @@ return function(api_version)
   while i < #api do
     local flags, name
     flags, name, i = unpack('Bz', api, i)
-    local fullname = 'ImGui_' .. name
+    local fullname = 'NvkGui_' .. name
     local unshimed = '__' .. fullname
 
     if flags & 2 ~= 0 then
