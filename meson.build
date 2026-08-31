@@ -166,7 +166,7 @@ elif not fs.is_file(resource_path / 'reaper.ini')
 endif
 data_dir    = resource_path / 'Data'
 plugins_dir = resource_path / 'UserPlugins'
-scripts_dir = resource_path / 'Scripts/ReaTeam Extensions/API'
+scripts_dir = resource_path / 'Scripts/nvk/API'
 
 subdir('compat')
 subdir('tools')
@@ -200,8 +200,8 @@ endif
 binding_targets = {
   'cpp':    { 'output': 'reaper_imgui_functions.h' },
   'zig':    { 'output': 'reaper_imgui.zig' },
-  'human':  { 'output': 'reaper_imgui_doc.html', 'install_dir': data_dir    },
-  'python': { 'output': 'imgui.py',              'install_dir': scripts_dir },
+  'human':  { 'output': 'reaper_nvkgui_doc.html', 'install_dir': data_dir    },
+  'python': { 'output': 'nvkgui.py',              'install_dir': scripts_dir },
   'luals':  { 'output': 'imgui_defs.lua' },
 }
 foreach name : bindings

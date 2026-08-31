@@ -139,7 +139,7 @@ static bool isAlreadyLoaded()
 void openDocumentation()
 {
   const auto path {widen(GetResourcePath()) + TEXT(WDL_DIRCHAR_STR)
-    TEXT("Data") TEXT(WDL_DIRCHAR_STR) TEXT("reaper_imgui_doc.html")};
+    TEXT("Data") TEXT(WDL_DIRCHAR_STR) TEXT("reaper_nvkgui_doc.html")};
   ShellExecute(nullptr, TEXT("open"), path.c_str(), nullptr, nullptr, SW_SHOW);
 }
 
