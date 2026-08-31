@@ -143,6 +143,6 @@ private:
 template<> void *Context::touch(Resource *);
 
 API_REGISTER_OBJECT_TYPE(Context);
-API_REGISTER_TYPE(FrameCallback, "ImGui_FrameCallback");
+API_REGISTER_TYPE(FrameCallback, "NvkGui_FrameCallback");
 
 #endif
