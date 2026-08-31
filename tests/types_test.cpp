@@ -33,7 +33,7 @@ API_REGISTER_OBJECT_TYPE(MyObjectA);
 API_REGISTER_TYPE(MyObjectB*, "ChunkyBacon*");
 
 TEST(TypesTest, Objects) {
-  EXPECT_EQ(TypeInfo<MyObjectA   *>::type(), "ImGui_MyObjectA*");
+  EXPECT_EQ(TypeInfo<MyObjectA   *>::type(), "NvkGui_MyObjectA*");
   EXPECT_EQ(TypeInfo<MyObjectB   *>::type(), "ChunkyBacon*");
   EXPECT_EQ(TypeInfo<reaper_array*>::type(), "reaper_array*");
 
