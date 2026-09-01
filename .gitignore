@@ -8,3 +8,4 @@
 !/subprojects/imgui
 !/subprojects/reaper-sdk
 !/subprojects/WDL
+.cache/
