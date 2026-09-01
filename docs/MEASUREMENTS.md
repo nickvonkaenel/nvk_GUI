@@ -81,3 +81,18 @@ transport stopped) and into the persistent-mode dormant keepalive.
 SIGNAL and Create do not opt in: they animate on their own in too many
 places to hook invalidation reliably, and their render cost was the
 small share of their idle CPU anyway (see above).
+
+### nvk_NAVIGATE opt-in + project-update refresh (same day)
+
+Loop.End now also redraws idle-safe scripts on any
+`GetProjectStateChangeCount` change (default behavior) and exposes
+`Loop.Refresh(frames)` for other external invalidations. Verified with
+temporary wake/skip logging in the fork: NAVIGATE unfocused skips ~96%
+of frames (safety-net repaints + rare wakes only), and a stream of undo
+points drops skips to zero for its duration, resuming after.
+
+NAVIGATE floating 500×400, unfocused, transport stopped: idle_safe off
+13.7% → on 13.1%. Its render was never the cost (small window; frame
+body is Lua-side) — the win is the principle plus headroom for bigger
+windows. Note REAPER's defer loop ran at ~60fps on this machine, so the
+IDLE_REPAINT_INTERVAL (30 ticks) safety net fires ~2×/s here.
