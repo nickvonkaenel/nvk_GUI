@@ -120,3 +120,13 @@ NAVIGATE unfocused, transport stopped: idle_safe off 13.1% → full skip
 +2.5 points. The residual is REAPER's defer machinery plus 4 cheap
 API/keepalive calls per tick (TrackControls.Update, play state, project
 state, WantsFrame).
+
+**Outcome (2026-09-01): NAVIGATE opt-in reverted.** Hover highlights
+lag perceptibly at the wake/skip boundary — hovering an *unfocused*
+window is precisely where the idle gate is open, so every pointer pause
+lets skipping resume and the next highlight change pays a wake. With
+only ~3.6 points saved, the feel regression wasn't worth it. No script
+currently opts in; the fork APIs (SetIdleHint/WantsFrame) and the
+shared Loop.CanSkipFrame machinery remain available. If revisited,
+solve hover first — e.g. stay awake the whole time the pointer is
+inside any of the context's windows, not just while it moves.
