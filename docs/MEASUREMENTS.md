@@ -43,3 +43,11 @@ screenset) dominates both and is untouched so far.
 → The real always-open tool set adds ~7.6 points at idle. That, not
 synthetic text windows, is what Phase 2 should be measured against
 (before/after, same project, transport stopped).
+
+### Present API (eager first present, added same day)
+
+First-ever window (no saved ini), time from first draw call to the OS
+window existing: without Present 3 frames / 41.7 ms; with Present on the
+opening frames 2 frames / 17.2 ms. Windows with saved sizes skip the
+auto-fit frame and should show after 1. Wired into nvk-ReaScripts'
+Loop.End for the first 3 frames and on persistent-mode reopen.

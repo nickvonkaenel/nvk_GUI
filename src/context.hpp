@@ -72,6 +72,7 @@ public:
   // api helpers
   void setCurrent();
   bool enterFrame();
+  void present();
 
   // for backends
   void mouseInput(int button, bool down);
