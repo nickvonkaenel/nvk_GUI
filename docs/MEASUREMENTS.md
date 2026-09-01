@@ -51,3 +51,49 @@ window existing: without Present 3 frames / 41.7 ms; with Present on the
 opening frames 2 frames / 17.2 ms. Windows with saved sizes skip the
 auto-fit frame and should show after 1. Wired into nvk-ReaScripts'
 Loop.End for the first 3 frames and on persistent-mode reopen.
+
+## 2026-09-01 — Style.Push enum-lookup cache (nvk-ReaScripts, Lua side only)
+
+`SHARED/Data/data/style.lua` built its ImGui enum lookups every frame: for each
+of the 26 entries in `style.vars`, a fresh `'StyleVar_' .. k` concatenation, a
+hash into the `ImGui` table, and a `Style.Scale` call that re-hashed
+`style.scalable` — all under `pairs()`, which re-walks the hash part each frame.
+Replaced with an ordered array of records (resolved enum, key, vec2 flag,
+scalable flag) built once on the first push and walked with `ipairs`.
+`Style.Pop`'s count now comes from `#push_list()`, the same source, so the two
+cannot drift.
+
+Method: headless Lua 5.4 (same runtime REAPER embeds), `ImGui.PushStyleVar`
+stubbed to a near-free counter so only the Lua work is timed. Median of 7
+trials × 100k frames. Pre-change implementation taken verbatim from HEAD.
+
+| config.scale | old     | new     | saved            |
+|--------------|---------|---------|------------------|
+| 1            | 4.76 us | 2.56 us | 2.20 us (46%)    |
+| 1.25         | 6.22 us | 3.36 us | 2.85 us (46%)    |
+
+Two corrections to the premise this change started from:
+
+- **The concatenation was not producing garbage.** Lua interns short strings, so
+  `'StyleVar_' .. k` re-finds the existing interned string every frame; measured
+  allocation is 0 bytes/frame both before and after. The cost was CPU (buffer +
+  hash + string-table probe), not GC pressure.
+- **The absolute win is small.** ~2 us/frame per window against a Lua frame body
+  measured at ~300 us/window in the Phase 1 steady-state run above — roughly
+  0.7% of the Lua frame. The change is still worth keeping (it halves the cost
+  of the thing it touches, and the code is no worse to read), but it is not a
+  frame-rate fix.
+
+**Not yet measured: the ReaImGui/nvk_GUI call boundary.** The control experiment
+this was meant to feed — what fraction of the ~86 pushes per frame (60
+`PushStyleColor` + 26 `PushStyleVar`) is Lua versus the extension call boundary —
+still needs an in-REAPER run. A ready harness is at
+`/Applications/REAPER/Scripts/nvk_style_bench_tmp/nvk_StyleBench.lua`: it opens
+its own context, loads both style.lua implementations into sandboxes against the
+real `ImGui` table, and interleaves four samples per frame (old push/pop, new
+push/pop, 26 raw `PushStyleVar` with all Lua lookups hoisted out = pure
+boundary, and 60 `PushStyleColor`), writing `bench.out` beside itself. It could
+not be run here: this REAPER instance was not executing command-line script
+launches at all — it classified every `.lua` argument as media, including the
+repo's own `dev_restart.lua` — and permission to inspect the REAPER window for a
+blocking modal was declined.
