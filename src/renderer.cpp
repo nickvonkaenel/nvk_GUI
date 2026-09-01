@@ -79,6 +79,7 @@ struct ProcessSharedSlot {
   const RendererType *type;
   bool software;
   std::shared_ptr<void> data;
+  RendererFactory::TextureSweeper sweeper;
 };
 static std::vector<ProcessSharedSlot> g_processShared;
 
@@ -94,13 +95,34 @@ std::shared_ptr<void> RendererFactory::getSharedDataErased() const
   return nullptr;
 }
 
-void RendererFactory::setSharedDataErased(std::shared_ptr<void> data)
+void RendererFactory::setSharedDataErased(std::shared_ptr<void> data,
+  const TextureSweeper sweeper)
 {
   if(!(m_type->flags & RendererType::ProcessShared)) {
     m_shared = std::move(data);
     return;
   }
-  g_processShared.push_back({m_type, m_forceSoftware, std::move(data)});
+  g_processShared.push_back({m_type, m_forceSoftware, std::move(data), sweeper});
+}
+
+void RendererFactory::destroyTexture(ImTextureData *tex) const
+{
+  for(const ProcessSharedSlot &slot : g_processShared) {
+    if(slot.type == m_type && slot.software == m_forceSoftware && slot.sweeper) {
+      slot.sweeper(slot.data.get(), tex);
+      return;
+    }
+  }
+}
+
+void RendererFactory::destroyTextureOnTeardown(ImTextureData *tex)
+{
+  for(const ProcessSharedSlot &slot : g_processShared) {
+    if(tex->GetTexID() == ImTextureID_Invalid)
+      return;
+    if(slot.sweeper)
+      slot.sweeper(slot.data.get(), tex);
+  }
 }
 
 void RendererFactory::teardownSharedData()

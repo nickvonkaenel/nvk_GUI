@@ -24,6 +24,7 @@
 class Renderer;
 class RendererFactory;
 class Window;
+struct ImTextureData;
 struct ImVec2;
 struct ImVec4;
 
@@ -58,11 +59,22 @@ public:
   const char *name() const { return m_type->name; }
   std::unique_ptr<Renderer> create(Window *);
 
+  // GPU-frees one texture on a ProcessShared backend's device
+  using TextureSweeper = void (*)(void *sharedData, ImTextureData *);
+
   template<typename T>
   auto getSharedData() const { return std::static_pointer_cast<T>(getSharedDataErased()); }
 
   template<typename T>
-  void setSharedData(T d) { setSharedDataErased(std::move(d)); }
+  void setSharedData(T d, TextureSweeper sweeper = nullptr)
+  { setSharedDataErased(std::move(d), sweeper); }
+
+  // GPU-frees one of the current context's textures. Called from Context
+  // teardown: a ProcessShared block outlives the last window, so its
+  // destructor can no longer sweep on the dying context's behalf.
+  void destroyTexture(ImTextureData *) const;
+  // last-resort sweep at plugin unload for textures no context owns anymore
+  static void destroyTextureOnTeardown(ImTextureData *);
 
   // releases the extension-held ProcessShared GPU blocks (plugin unload)
   static void teardownSharedData();
@@ -71,7 +83,7 @@ public:
 
 private:
   std::shared_ptr<void> getSharedDataErased() const;
-  void setSharedDataErased(std::shared_ptr<void>);
+  void setSharedDataErased(std::shared_ptr<void>, TextureSweeper);
 
   const RendererType *m_type;
   std::weak_ptr<void> m_shared;
