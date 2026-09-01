@@ -124,3 +124,86 @@ catches the error, but the raised ReaImGui error invalidates the context, and
 the script then dies silently on its next deferred frame - no error dialog, no
 traceback, just a defer loop that never ticks. Enumerate `Col_*` off the `ImGui`
 table the way `demo.EachEnum` does instead.
+
+## 2026-09-01 — Persistent style (SetStyle) vs pushing the theme every frame
+
+Dear ImGui's style is not reset per frame, but the API exposed only the stack,
+so nvk-ReaScripts re-pushed its whole base theme at `Loop.Start` on every frame
+of every window: 60 `PushStyleColor` from `Colors.Push` plus 26 `PushStyleVar`
+from `Style.Push`, then the matching pops at `Loop.End`. This adds
+`SetStyleColor`, `SetStyleVar` and a bulk `SetStyle(ctx, reaper_array)` that
+write into `Context::style()` directly, and moves the base layer onto them:
+one crossing when the theme changes, none when it does not.
+
+Method: **the real thing**, not a synthetic context. `SHARED/Data/data/loop.lua`
+temporarily instrumented to time each leg with `reaper.time_precise()` inside
+`nvk_SIGNAL`'s own frame — its real theme, real window, real host load — median
+of 300 frames after 90 warmup frames. REAPER 7.78/macOS-arm64, undocked,
+`config.scale` 1.
+
+**Position in the frame dominates**, so both orderings are reported. Whatever
+runs first after the defer tick pays cold caches (the rest of SIGNAL's frame
+has evicted everything in between). The frame itself is opened with a throwaway
+`ImGui.GetTime` before any leg, so no leg absorbs `beginFrame`.
+
+| leg (us/frame, median)                    | run A: new first | run B: old first |
+|-------------------------------------------|------------------|------------------|
+| `Colors.Push` (60 colors)                 | 45.06            | 100.85           |
+| `Style.Push` (26 vars)                    | 27.89            |  72.00           |
+| `Style.Pop`                               |  3.10            |   4.05           |
+| `Colors.Pop`                              | 11.92            |  14.07           |
+| **old path total**                        | **87.97**        | **190.97**       |
+| 86 crossings, all Lua hoisted (boundary)  | 34.09            |  43.87           |
+| `gui.Style` steady state (new path)       | 19.07            |  13.83           |
+| `gui.Style` steady state, second call     |  1.91            |     —            |
+| `gui.Style` forced re-apply (one SetStyle)| 170.95           |  95.84           |
+
+Each path measured in the position it actually occupies: the old one went first
+in the frame (191 us), and so does the new one (19 us). **~172 us/frame/window
+saved, a ~10x cut**, and 1.9 us once the caches are warm.
+
+Reconciling with the enum-cache entry above, which measured the same 86
+crossings at ~15 us of pure boundary: that harness ran 20 inner reps per frame
+in its own quiet context, so every rep after the first was warm. On a real busy
+window a single cold pass costs 34-44 us for the same crossings. Both numbers
+are right for what they measure; the per-frame cost a script actually pays is
+the cold one.
+
+Two things that entry could not see, because it only measured the boundary:
+
+- **The Lua that feeds the crossings costs about as much as the crossings.**
+  Old path 191 us against a 44 us boundary floor: resolving 60 colors and 26
+  variables is ~75% of it. Going persistent drops both, which is why the saving
+  (172 us) is far larger than the boundary prize (~15-44 us).
+- **A re-apply is not free.** One `SetStyle` costs 96-171 us — about one old
+  push pass — and almost none of that is the crossing: it is building the
+  344-number Lua record table and `reaper.new_array` copying it. Fine while
+  applies are rare (theme edit, dock change, scale change), and the reason the
+  invalidation is a signature check rather than a per-frame rebuild. If applies
+  ever become frequent, reuse one `reaper_array` instead of allocating.
+
+Correctness, same instrumentation, driven from inside `nvk_SIGNAL` and read
+back through `GetStyleColor`/`GetStyleVar` — each case mutates, lets `gui.Style`
+run, checks the applied style, and restores, all in one frame:
+
+    steady state                       PASS
+    dock state change                  PASS
+    config.disable_docked_colors       PASS
+    config.follow_reaper_theme_docked  PASS
+    theme edited in place              PASS
+    config.scale                       PASS
+    style editor override              PASS
+    gui.refresh                        PASS
+    REAPER theme change                PASS  (followed to the new color and back)
+
+The REAPER theme case is the one that cannot be checked inside a frame: those
+two docked backgrounds are on a 0.5s poll of their own rather than in a resolved
+palette, so `Colors.PollReaperTheme` drives the poll from `gui.Style` and reports
+a version that moves only when a followed color does. The test moves
+`col_main_bg2` with `SetThemeColor` and watches the applied background follow it
+and come back.
+
+`SetStyle`'s record encoding is `{kind, index, val1, val2}` repeated, fixed
+width at four so the size check is one modulo and the script side fills the
+array with a flat loop. Kind 0 is a color (val1 packed 0xRRGGBBAA, val2 unused),
+kind 1 a variable (val2 ignored for the scalar ones).

@@ -89,6 +89,37 @@ static void assertStyleVar(const size_t var_idx)
     throw reascript_error {"unknown style variable"};
 }
 
+static void assertStyleColor(const int idx)
+{
+  if(idx < 0 || idx >= ImGuiCol_COUNT)
+    throw reascript_error {"unknown style color"};
+}
+
+// Write a style variable straight into the style, without touching the stack.
+// val2 is optional: absent means "no second component was given". reject_val2
+// makes a second component an error for scalar variables (what SetStyleVar
+// wants, mirroring PushStyleVar); SetStyle's fixed-width records always carry
+// one and let it be ignored instead.
+static void setStyleVar(ImGuiStyle &style, const int idx,
+  const double val1, const double *val2, const bool reject_val2)
+{
+  assertStyleVar(idx);
+
+  std::visit([&style, val1, val2, reject_val2](auto ImGuiStyle::*field) {
+    if constexpr(std::is_same_v<ImVec2,
+                            std::decay_t<decltype(style.*field)>>) {
+      if(!val2)
+        throw reascript_error {"this variable requires two values (x, y)"};
+      style.*field = ImVec2(val1, *val2);
+    }
+    else {
+      if(reject_val2 && val2)
+        throw reascript_error {"second value ignored for this variable"};
+      style.*field = static_cast<float>(val1);
+    }
+  }, g_styleVars[idx]);
+}
+
 API_FUNC(0_1, void, PushStyleVar, (Context*,ctx)
 (int,idx) (double,val1) (RO<double*>,val2),
 R"(Temporarily modify a style variable.
@@ -154,6 +185,19 @@ API_FUNC(0_1, void, GetStyleVar, (Context*,ctx)
     }
     else if(val1) *val1 = style.*field;
   }, g_styleVars[var_idx]);
+}
+
+API_FUNC(0_10, void, SetStyleVar, (Context*,ctx)
+(int,idx) (double,val1) (RO<double*>,val2),
+R"(Permanently modify a style variable. Unlike PushStyleVar the new value is
+written into the style itself: it outlives the frame and there is nothing to
+pop. See StyleVar_* for possible values of 'idx'.
+
+Do not call this while the same variable is pushed. PopStyleVar restores what
+its matching push saved, which would discard the change.)")
+{
+  FRAME_GUARD;
+  setStyleVar(ctx->style(), idx, val1, val2, true);
 }
 
 API_ENUM(0_1, StyleVar_Alpha,
@@ -300,6 +344,20 @@ API_FUNC(0_1, void, PopStyleColor, (Context*,ctx)
   ImGui::PopStyleColor(API_GET(count));
 }
 
+API_FUNC(0_10, void, SetStyleColor, (Context*,ctx)
+(int,idx) (int,col_rgba),
+R"(Permanently modify a style color. Unlike PushStyleColor the new value is
+written into the style itself: it outlives the frame and there is nothing to
+pop. See Col_* for available style colors.
+
+Do not call this while the same color is pushed. PopStyleColor restores what
+its matching push saved, which would discard the change.)")
+{
+  FRAME_GUARD;
+  assertStyleColor(idx);
+  ctx->style().Colors[idx] = Color(col_rgba);
+}
+
 API_FUNC(0_9, void, DebugFlashStyleColor, (Context*,ctx)
 (int,idx),
 "")
@@ -388,3 +446,67 @@ API_ENUM(0_1, Col_NavWindowingDimBg,
   "Darken/colorize entire screen behind the CTRL+TAB window list, when active.");
 API_ENUM(0_1, Col_ModalWindowDimBg,
   "Darken/colorize entire screen behind a modal window, when one is active.");
+
+API_SUBSECTION("Batch",
+R"(Applying a whole theme one call at a time costs one script/extension boundary
+crossing per value. SetStyle takes all of them in a single reaper_array.)");
+
+// A record is {kind, index, value1, value2}. Fixed width, so the size check is
+// one modulo and the script side fills the array with a flat loop instead of
+// tracking a per-kind stride.
+static constexpr unsigned int STYLE_RECORD_SIZE {4};
+enum StyleRecordKind {
+  StyleRecordKind_Color,
+  StyleRecordKind_Var,
+};
+
+API_FUNC(0_10, void, SetStyle, (Context*,ctx)
+(reaper_array*,values),
+R"(Permanently modify any number of style colors and variables in one call.
+Like SetStyleColor and SetStyleVar, the values are written into the style
+itself: they outlive the frame and there is nothing to pop.
+
+'values' is a flat sequence of four-number records, {kind, index, val1, val2}:
+
+- kind 0 sets a style color. 'index' is a Col_* value and 'val1' is the color
+  packed as 0xRRGGBBAA. 'val2' is unused; pass 0.
+- kind 1 sets a style variable. 'index' is a StyleVar_* value, 'val1' is the
+  first component and 'val2' the second. 'val2' is ignored for variables that
+  take a single value.
+
+The array's size must be a multiple of four. Records apply in order, so a
+later record overwrites an earlier one for the same index.
+
+Do not call this while style colors or variables it writes are pushed: the
+matching PopStyleColor/PopStyleVar restores what the push saved, which would
+discard the change.)")
+{
+  FRAME_GUARD;
+  assertValid(values);
+
+  if(values->size % STYLE_RECORD_SIZE)
+    throw reascript_error
+      {"values must hold whole records of 4 (kind, index, val1, val2)"};
+
+  ImGuiStyle &style {ctx->style()};
+
+  for(unsigned int i {}; i < values->size; i += STYLE_RECORD_SIZE) {
+    const double *record {&values->data[i]};
+    const int index {static_cast<int>(record[1])};
+
+    switch(static_cast<int>(record[0])) {
+    case StyleRecordKind_Color:
+      assertStyleColor(index);
+      // through int64_t so both a signed and an unsigned packing of the same
+      // 32 bits arrive as the same color
+      style.Colors[index] =
+        Color(static_cast<uint32_t>(static_cast<int64_t>(record[2])));
+      break;
+    case StyleRecordKind_Var:
+      setStyleVar(style, index, record[2], &record[3], false);
+      break;
+    default:
+      throw reascript_error {"unknown style record kind"};
+    }
+  }
+}
