@@ -20,6 +20,7 @@
 #include "configvar.hpp"
 #include "context.hpp"
 #include "error.hpp"
+#include "font_registry.hpp"
 
 #include <functional>
 
@@ -121,6 +122,9 @@ void Resource::Timer::tick()
   if(blocked)
     return;
 
+  // fonts owning a shared-atlas instance persist for the whole session
+  FontRegistry::keepOwnersAlive();
+
   auto it {g_rsx.begin()};
   bool didGc {false};
 
@@ -139,6 +143,9 @@ void Resource::Timer::tick()
     ++g_consecutiveGcFrames;
   else
     g_consecutiveGcFrames = 0;
+
+  // every context has rendered and ended its frame by now
+  FontRegistry::newFrame();
 }
 
 LRESULT CALLBACK Resource::Timer::mainProcOverride(HWND hwnd,

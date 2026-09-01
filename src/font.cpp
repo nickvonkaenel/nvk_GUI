@@ -19,6 +19,7 @@
 
 #include "context.hpp"
 #include "error.hpp"
+#include "font_registry.hpp"
 
 #include <imgui/imgui_internal.h>
 #include <imgui/misc/freetype/imgui_freetype.h>
@@ -63,9 +64,18 @@ static void uninstall(Context *ctx, ImFont *font)
   ctx->IO().Fonts->RemoveFont(font);
 }
 
+static void uninstallShared(Context *, ImFont *font)
+{
+  FontRegistry::release(font);
+}
+
 SubresourceData Font::install(Context *ctx)
 {
-  if(ImFont *inst {m_src.install(ctx->IO().Fonts, this)}) {
+  if(ctx->usesSharedAtlas()) {
+    if(ImFont *inst {FontRegistry::acquire(this)})
+      return {inst, &uninstallShared};
+  }
+  else if(ImFont *inst {m_src.install(ctx->IO().Fonts, this)}) {
     // don't set ImFontConfig::SizePixels to use EM square sizing
     inst->LegacySize = m_size;
     return {inst, &uninstall};

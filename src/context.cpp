@@ -22,6 +22,7 @@
 #include "docker.hpp"
 #include "error.hpp"
 #include "font.hpp"
+#include "font_registry.hpp"
 #include "keymap.hpp"
 #include "platform.hpp"
 #include "renderer.hpp"
@@ -114,7 +115,7 @@ Context::Context(const char *label, const int userConfigFlags)
     m_lastFrame       {decltype(m_lastFrame)::clock::now()               },
     m_name            {label, ImGui::FindRenderedTextEnd(label)          },
     m_iniFilename     {generateIniFilename(m_id)                         },
-    m_imgui           {ImGui::CreateContext()                            },
+    m_imgui           {ImGui::CreateContext(FontRegistry::atlasForNewContext())},
     m_dockers         {std::make_unique<DockerList>()                    },
     m_rendererFactory {std::make_unique<RendererFactory>()               },
     m_font            {new SysFont {SysFont::SANS_SERIF}                 }
@@ -169,8 +170,10 @@ Context::Context(const char *label, const int userConfigFlags)
   ImGuiStyle &style {m_imgui->Style};
   style.FontSizeBase = 12.f; // 9pt
   style.FramePadding.y = 2.f;
-  io.Fonts->SetFontLoader(Font::loader());
+  if(!usesSharedAtlas()) // the registry configured the shared atlas already
+    io.Fonts->SetFontLoader(Font::loader());
   io.FontDefault = m_font->instance(this);
+  FontRegistry::ensureFrameInit(); // needs >= 1 font in the shared atlas
 
   // prevent imgui from loading settings but not from saving them
   // (so that the saved state is reset to defaults)
@@ -195,10 +198,14 @@ Context::~Context()
     sr.data.uninstall(this);
 
   // GPU-release this context's textures: a ProcessShared block outlives the
-  // last window, so its destructor no longer sweeps them on our behalf
-  for(ImTextureData *tex : m_imgui->IO.Fonts->TexList) {
-    if(tex->GetTexID() != ImTextureID_Invalid)
-      m_rendererFactory->destroyTexture(tex);
+  // last window, so its destructor no longer sweeps them on our behalf.
+  // The registry's shared atlas is deliberately left alone -- its baked
+  // textures persist for other contexts and future script (re)opens.
+  if(!usesSharedAtlas()) {
+    for(ImTextureData *tex : m_imgui->IO.Fonts->TexList) {
+      if(tex->GetTexID() != ImTextureID_Invalid)
+        m_rendererFactory->destroyTexture(tex);
+    }
   }
   for(ImTextureData *tex : m_imgui->UserTextures) {
     if(tex->GetTexID() != ImTextureID_Invalid)
@@ -253,6 +260,11 @@ bool Context::isAttached(Resource *obj) const
 {
   return std::find(m_attachments.begin(), m_attachments.end(), obj)
     != m_attachments.end();
+}
+
+bool Context::usesSharedAtlas() const
+{
+  return FontRegistry::isSharedAtlas(m_imgui->IO.Fonts);
 }
 
 template<>
