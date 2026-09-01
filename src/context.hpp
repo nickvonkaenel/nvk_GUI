@@ -73,6 +73,7 @@ public:
   void setCurrent();
   bool enterFrame();
   void present();
+  void setIdleHint(bool idle) { m_idleHint = idle; }
 
   // for backends
   void mouseInput(int button, bool down);
@@ -86,6 +87,7 @@ public:
   void updateFocus();
   void enableViewports(bool enable);
   void invalidateViewportsPos();
+  void wake(); // cancel idle frame-skipping for the next couple of frames
 
   ImGuiIO &IO();
   ImGuiStyle &style();
@@ -108,6 +110,7 @@ private:
 
   bool beginFrame();
   bool endFrame(bool render);
+  bool skipIdleFrame();
 
   void updateFrameInfo();
   void updateCursor();
@@ -128,6 +131,9 @@ private:
 
   ImGuiID m_id;
   char m_stateFlags;
+  bool m_idleHint;
+  unsigned char m_wakeFrames, m_idleFrames;
+  ImVec2 m_lastMousePos;
   HCURSOR m_cursor;
   FrameCallback m_frameCallback;
   std::chrono::time_point<std::chrono::steady_clock> m_lastFrame; // monotonic

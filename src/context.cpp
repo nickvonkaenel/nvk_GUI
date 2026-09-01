@@ -55,6 +55,12 @@ constexpr ImGuiMouseButton DND_MouseButton {ImGuiMouseButton_Left};
 constexpr ImGuiConfigFlags PRIVATE_CONFIG_FLAGS
   {ImGuiConfigFlags_ViewportsEnable};
 
+// Idle frame-skipping (SetIdleHint): render for a couple of frames after any
+// wake event (imgui needs a frame or two to settle), and repaint about once
+// per second while idle as a safety net against missed invalidations.
+constexpr unsigned char WAKE_FRAMES {2};
+constexpr unsigned char IDLE_REPAINT_INTERVAL {30}; // ~1s at REAPER's ~30Hz
+
 class TempCurrent {
 public:
   TempCurrent(Context *ctx)
@@ -111,7 +117,8 @@ void Context::clearCurrent()
 }
 
 Context::Context(const char *label, const int userConfigFlags)
-  : m_id {ImHashStr(label)}, m_stateFlags {}, m_cursor {}, m_frameCallback {},
+  : m_id {ImHashStr(label)}, m_stateFlags {}, m_idleHint {},
+    m_wakeFrames {}, m_idleFrames {}, m_cursor {}, m_frameCallback {},
     m_lastFrame       {decltype(m_lastFrame)::clock::now()               },
     m_name            {label, ImGui::FindRenderedTextEnd(label)          },
     m_iniFilename     {generateIniFilename(m_id)                         },
@@ -274,8 +281,38 @@ void Context::present()
   // timer ticks (frame one computes auto-fit sizing, frame two shows);
   // presenting from within the script's own defer callback removes that
   // wait. Anything drawn after this call starts a new frame.
-  if(m_imgui->WithinFrameScope)
+  if(m_imgui->WithinFrameScope) {
+    wake(); // an explicit present overrides any idle hint
     endFrame(true);
+  }
+}
+
+void Context::wake()
+{
+  m_idleHint = false;
+  if(m_wakeFrames < WAKE_FRAMES)
+    m_wakeFrames = WAKE_FRAMES;
+}
+
+bool Context::skipIdleFrame()
+{
+  // the hint only covers the frame it was given in: scripts re-assert
+  // idleness on every frame they know to be static
+  const bool hint {m_idleHint};
+  m_idleHint = false;
+
+  if(m_wakeFrames) {
+    --m_wakeFrames;
+    m_idleFrames = 0;
+    return false;
+  }
+
+  if(!hint || ++m_idleFrames >= IDLE_REPAINT_INTERVAL) {
+    m_idleFrames = 0;
+    return false;
+  }
+
+  return true;
 }
 
 template<>
@@ -328,6 +365,18 @@ bool Context::beginFrame() try
   touch<void>(m_font);
   assert(!m_imgui->WithinFrameScope);
 
+  // window events (move/resize/close requests set by the platform windows,
+  // consumed by the upcoming NewFrame) cancel idle frame-skipping
+  const ImGuiPlatformIO &pio {m_imgui->PlatformIO};
+  for(int i {}; i < pio.Viewports.Size; ++i) {
+    const ImGuiViewport *viewport {pio.Viewports[i]};
+    if(viewport->PlatformRequestMove || viewport->PlatformRequestResize ||
+        viewport->PlatformRequestClose) {
+      wake();
+      break;
+    }
+  }
+
   Platform::updateMonitors(); // TODO only if changed
 
   updateFrameInfo();
@@ -362,6 +411,15 @@ bool Context::endFrame(const bool render) try
 
   if(!render) {
     ImGui::EndFrame();
+    return true;
+  }
+
+  if(skipIdleFrame()) {
+    // The script asserted its content is static: end the frame without
+    // generating draw data or presenting. Platform windows must still be
+    // updated (required before the next NewFrame with viewports enabled).
+    ImGui::EndFrame();
+    ImGui::UpdatePlatformWindows();
     return true;
   }
 
@@ -462,11 +520,20 @@ void Context::updateMouseData()
   else
     pos.x = pos.y = -FLT_MAX;
 
+  // mouse movement over (or into/out of) our windows isn't reported through
+  // the input callbacks below; hover feedback needs to wake idle contexts too
+  if(pos.x != m_lastMousePos.x || pos.y != m_lastMousePos.y) {
+    m_lastMousePos = pos;
+    wake();
+  }
+
   io.AddMousePosEvent(pos.x, pos.y);
 }
 
 void Context::mouseInput(int button, const bool down)
 {
+  wake();
+
 #ifdef __APPLE__
   if(button == ImGuiMouseButton_Left &&
       m_stateFlags & (down ? RCE_Armed : RCE_Active)) {
@@ -488,6 +555,8 @@ void Context::mouseInput(int button, const bool down)
 
 void Context::mouseWheel(const bool horizontal, float delta)
 {
+  wake();
+
 #ifndef WHEEL_DELTA
   constexpr float WHEEL_DELTA {
 #  ifdef __APPLE__
@@ -508,6 +577,8 @@ void Context::mouseWheel(const bool horizontal, float delta)
 
 void Context::keyInput(ImGuiKey key, const bool down)
 {
+  wake();
+
 #ifdef __APPLE__
   // Preferences > Editing Behavior > Mouse >
   // Control+left-click emulates right-click
@@ -540,11 +611,13 @@ void Context::charInput(const unsigned int codepoint)
       (codepoint >= 0xf700 && codepoint <= 0xf7ff)) // unicode private range
     return;
 
+  wake();
   m_imgui->IO.AddInputCharacter(codepoint);
 }
 
 void Context::charInputUTF16(const ImWchar16 unit)
 {
+  wake();
   m_imgui->IO.AddInputCharacterUTF16(unit);
 }
 
@@ -605,6 +678,7 @@ void Context::dragSources()
 
 void Context::beginDrag(std::vector<std::string> &&files)
 {
+  wake();
   m_draggedFiles = std::move(files);
 
   m_imgui->IO.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
@@ -633,6 +707,8 @@ void Context::beginDrag(HDROP drop)
 
 void Context::endDrag(const bool drop)
 {
+  wake();
+
   if(!drop) {
     // Keep the mouse position invalid until m_draggedFiles is cleared
     // to prevent accidental drop (IDropSource may call endDrag(false)
@@ -741,6 +817,8 @@ void Context::updateFocus()
 
 void Context::clearFocus()
 {
+  wake(); // repaint title bars and focus highlights
+
   TempCurrent cur {this};
 
   if(ImGui::GetTopMostPopupModal())

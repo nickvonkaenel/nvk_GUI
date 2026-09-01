@@ -96,6 +96,26 @@ the first visible frame). Pointless in steady state.)")
   ctx->present();
 }
 
+API_FUNC(0_10, void, SetIdleHint, (Context*,ctx) (bool,idle),
+R"(Assert that this frame's content is static: the frame is not rendered nor
+presented, leaving the last rendered frame on screen. The script's defer loop
+and all of its drawing calls keep running as usual (at a much lower cost) and
+object lifetime management is unaffected.
+
+The hint only covers the current frame: call it every frame while the UI is
+known to be static (nothing animating, no pending changes). Only assert
+idleness when this is certain — a frame skipped in error stays stale on
+screen until the next wake-up.
+
+The hint is ignored for a couple of frames after any user interaction with
+the context's windows (mouse, keyboard, wheel, window move/resize/close,
+drag and drop, focus loss), and a frame is still rendered about once per
+second as a safety net against missed invalidations.)")
+{
+  assertValid(ctx);
+  ctx->setIdleHint(idle);
+}
+
 API_SUBSECTION("Options",
   "You can visualize and interact with all options in Demo > Configuration");
 
