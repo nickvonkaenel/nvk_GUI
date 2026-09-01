@@ -267,6 +267,17 @@ bool Context::usesSharedAtlas() const
   return FontRegistry::isSharedAtlas(m_imgui->IO.Fonts);
 }
 
+void Context::present()
+{
+  // Renders and presents right away instead of at the end of the defer
+  // cycle. A new script window normally becomes visible only after two
+  // timer ticks (frame one computes auto-fit sizing, frame two shows);
+  // presenting from within the script's own defer callback removes that
+  // wait. Anything drawn after this call starts a new frame.
+  if(m_imgui->WithinFrameScope)
+    endFrame(true);
+}
+
 template<>
 void *Context::touch<void>(Resource *obj)
 {

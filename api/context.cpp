@@ -83,6 +83,19 @@ ValidatePtr.)")
   ctx->detach(obj);
 }
 
+API_FUNC(0_10, void, Present, (Context*,ctx),
+R"(Render and present this frame's windows immediately instead of at the end
+of the current defer cycle. Call after submitting every window for the frame:
+anything drawn afterwards starts a new frame that renders normally.
+
+Intended for the first few frames of a newly opened script, where it removes
+up to two timer ticks of perceived open latency (initial auto-fit sizing and
+the first visible frame). Pointless in steady state.)")
+{
+  assertValid(ctx);
+  ctx->present();
+}
+
 API_SUBSECTION("Options",
   "You can visualize and interact with all options in Demo > Configuration");
 
