@@ -96,3 +96,27 @@ NAVIGATE floating 500×400, unfocused, transport stopped: idle_safe off
 body is Lua-side) — the win is the principle plus headroom for bigger
 windows. Note REAPER's defer loop ran at ~60fps on this machine, so the
 IDLE_REPAINT_INTERVAL (30 ticks) safety net fires ~2×/s here.
+
+### Full-cycle skip: WantsFrame (same day)
+
+Render-skip alone left the Lua frame body running, which for NAVIGATE
+was most of its idle cost. `WantsFrame` closes that: while an accepted
+idle hint stands and no wake is pending it returns false, and the script
+skips its entire cycle — no drawing code, no NewFrame, no render. The
+hint became sticky (cleared by SetIdleHint(false) or any wake); both
+WantsFrame and SetIdleHint use assertValid only, so they keep the
+context alive without starting a frame. The safety-net repaint moved to
+Context::heartbeat (runs every tick even with no frame), which also
+polls viewport PlatformRequest flags so window events wake fully
+skipped contexts.
+
+Cadence test (synthetic, mirroring loop.lua): 600 idle cycles → 577
+skipped / 23 safety repaints; 240 cycles with an undo-point stream →
+239 drawn; idle re-engaged cleanly after. Window content verified
+intact on screen while skipping.
+
+NAVIGATE unfocused, transport stopped: idle_safe off 13.1% → full skip
+**9.5%** (bare REAPER 7.0%): the script's idle cost drops from +6.1 to
++2.5 points. The residual is REAPER's defer machinery plus 4 cheap
+API/keepalive calls per tick (TrackControls.Update, play state, project
+state, WantsFrame).
