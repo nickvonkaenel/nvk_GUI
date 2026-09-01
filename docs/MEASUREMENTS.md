@@ -84,16 +84,43 @@ Two corrections to the premise this change started from:
   of the thing it touches, and the code is no worse to read), but it is not a
   frame-rate fix.
 
-**Not yet measured: the ReaImGui/nvk_GUI call boundary.** The control experiment
-this was meant to feed — what fraction of the ~86 pushes per frame (60
-`PushStyleColor` + 26 `PushStyleVar`) is Lua versus the extension call boundary —
-still needs an in-REAPER run. A ready harness is at
-`/Applications/REAPER/Scripts/nvk_style_bench_tmp/nvk_StyleBench.lua`: it opens
-its own context, loads both style.lua implementations into sandboxes against the
-real `ImGui` table, and interleaves four samples per frame (old push/pop, new
-push/pop, 26 raw `PushStyleVar` with all Lua lookups hoisted out = pure
-boundary, and 60 `PushStyleColor`), writing `bench.out` beside itself. It could
-not be run here: this REAPER instance was not executing command-line script
-launches at all — it classified every `.lua` argument as media, including the
-repo's own `dev_restart.lua` — and permission to inspect the REAPER window for a
-blocking modal was declined.
+### In-REAPER: Lua vs the ReaImGui/nvk_GUI call boundary
+
+The control experiment this change was meant to feed. Harness opens its own
+context, loads both style.lua implementations into sandboxes against the real
+`ImGui` table, and interleaves four samples per frame so host-load drift hits
+each variant equally: old push/pop, new push/pop, 26 raw `PushStyleVar` with
+every Lua lookup hoisted out of the loop (= pure boundary), and 60
+`PushStyleColor`. 20 inner reps/frame, median of 300 frames.
+
+REAPER 7.78/macOS-arm64, nvk_GUI 0.10.0.5, docked default project. Three runs:
+
+| leg                          | run 1  | run 2  | run 3  |
+|------------------------------|--------|--------|--------|
+| `Style.Push`+`Pop` old       | 11.40  | 11.30  | 10.36  |
+| `Style.Push`+`Pop` new       |  8.00  |  8.00  |  7.30  |
+| 26x `PushStyleVar` (boundary)|  6.25  |  6.54  |  5.96  |
+| 60x `PushStyleColor`         |  8.85  |  9.10  |  8.34  |
+
+(us per frame, one window.)
+
+- Lua overhead of `Style.Push`: **5.15 -> 1.75 us**, a 66% cut. That is the part
+  this change owns, and it tracks the headless 46% once the boundary floor is
+  subtracted out.
+- **The boundary is now ~80% of what `Style.Push` costs** (78/82/82%). Remaining
+  Lua headroom in the whole function is ~1.5 us; the 26 crossings alone cost
+  ~6.2 us and no Lua change can touch them.
+- Per crossing: style vars ~0.24 us, style colors ~0.15 us. Style vars cost
+  more, presumably the vec2 overload and wider arg marshalling.
+- The ~86 pushes a frame (60 `Colors.Push` + 26 `Style.Push`) cost **~15 us of
+  boundary alone**, per window, before any Lua runs. That is the number worth
+  attacking - by cutting crossings (batching, or pushing only what differs from
+  the baked-in style), not by tightening Lua.
+
+Harness kept at `/Applications/REAPER/Scripts/nvk_style_bench_tmp/`. One trap
+worth recording: it originally found the style-color count by calling
+`GetStyleColor` with rising indices under `pcall` until one raised. The `pcall`
+catches the error, but the raised ReaImGui error invalidates the context, and
+the script then dies silently on its next deferred frame - no error dialog, no
+traceback, just a defer loop that never ticks. Enumerate `Col_*` off the `ImGui`
+table the way `demo.EachEnum` does instead.
