@@ -29,7 +29,8 @@
 
 class D3D10Renderer;
 REGISTER_RENDERER(10, d3d10, "Direct3D 10", &Renderer::create<D3D10Renderer>,
-  RendererType::Available | RendererType::CanForceSoftware);
+  RendererType::Available | RendererType::CanForceSoftware |
+  RendererType::ProcessShared);
 
 constexpr uint8_t VERTEX_SHADER[] {
 #  include "d3d10_vertex.hlsl.ipp"

@@ -34,7 +34,7 @@ static_assert(__has_feature(objc_arc),
 class MetalRenderer;
 REGISTER_RENDERER(10, metal, "Metal", &Renderer::create<MetalRenderer>, []() -> char {
   if(@available(macOS 10.11, *))
-    return RendererType::Available;
+    return RendererType::Available | RendererType::ProcessShared;
   else
     return 0;
 }());

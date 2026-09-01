@@ -23,6 +23,7 @@
 
 #include <cassert>
 #include <imgui/imgui.h>
+#include <vector>
 
 static auto &typeHead()
 {
@@ -67,6 +68,44 @@ RendererFactory::RendererFactory()
   : m_type {Settings::Renderer}, m_forceSoftware {Settings::ForceSoftware}
 {
   assert(m_type);
+}
+
+// One GPU device + pipeline block per (renderer type, software flag) for
+// ProcessShared backends, held by the extension until unload: contexts
+// created at any time share one device, and it survives the last window
+// closing. Scripts open faster and per-context GPU duplication goes away;
+// this is also the prerequisite for sharing a font atlas across contexts.
+struct ProcessSharedSlot {
+  const RendererType *type;
+  bool software;
+  std::shared_ptr<void> data;
+};
+static std::vector<ProcessSharedSlot> g_processShared;
+
+std::shared_ptr<void> RendererFactory::getSharedDataErased() const
+{
+  if(!(m_type->flags & RendererType::ProcessShared))
+    return m_shared.lock();
+
+  for(const ProcessSharedSlot &slot : g_processShared) {
+    if(slot.type == m_type && slot.software == m_forceSoftware)
+      return slot.data;
+  }
+  return nullptr;
+}
+
+void RendererFactory::setSharedDataErased(std::shared_ptr<void> data)
+{
+  if(!(m_type->flags & RendererType::ProcessShared)) {
+    m_shared = std::move(data);
+    return;
+  }
+  g_processShared.push_back({m_type, m_forceSoftware, std::move(data)});
+}
+
+void RendererFactory::teardownSharedData()
+{
+  g_processShared.clear();
 }
 
 std::unique_ptr<Renderer> RendererFactory::create(Window *window)
