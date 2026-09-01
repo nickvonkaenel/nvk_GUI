@@ -31,6 +31,11 @@ struct RendererType {
   enum Flags {
     Available        = 1<<0,
     CanForceSoftware = 1<<1,
+    // The backend's shared block holds only process-wide GPU objects
+    // (device, compiled shaders, pipeline state), so one instance can serve
+    // every context and outlive the last window. Not safe for OpenGL, whose
+    // objects belong to a platform share group.
+    ProcessShared    = 1<<2,
   };
 
   struct Register {
@@ -54,14 +59,20 @@ public:
   std::unique_ptr<Renderer> create(Window *);
 
   template<typename T>
-  auto getSharedData() const { return std::static_pointer_cast<T>(m_shared.lock()); }
+  auto getSharedData() const { return std::static_pointer_cast<T>(getSharedDataErased()); }
 
   template<typename T>
-  void setSharedData(T d) { m_shared = d; }
+  void setSharedData(T d) { setSharedDataErased(std::move(d)); }
+
+  // releases the extension-held ProcessShared GPU blocks (plugin unload)
+  static void teardownSharedData();
 
   bool wantSoftware() const { return m_forceSoftware; }
 
 private:
+  std::shared_ptr<void> getSharedDataErased() const;
+  void setSharedDataErased(std::shared_ptr<void>);
+
   const RendererType *m_type;
   std::weak_ptr<void> m_shared;
   bool m_forceSoftware;

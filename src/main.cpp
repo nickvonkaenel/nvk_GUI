@@ -25,6 +25,7 @@
 #include "api.hpp"
 #include "docker.hpp"
 #include "function.hpp"
+#include "renderer.hpp"
 #include "resource.hpp"
 #include "settings.hpp"
 #include "win32_unicode.hpp"
@@ -193,6 +194,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(
   if(!rec) {
     API::teardown();
     Resource::destroyAll(); // save context settings
+    RendererFactory::teardownSharedData();
     Settings::teardown();
     Action::teardown();
     return 0;
