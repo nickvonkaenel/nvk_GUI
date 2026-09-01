@@ -238,6 +238,12 @@ void Context::detach(Resource *obj)
   m_attachments.erase(it);
 }
 
+bool Context::isAttached(Resource *obj) const
+{
+  return std::find(m_attachments.begin(), m_attachments.end(), obj)
+    != m_attachments.end();
+}
+
 template<>
 void *Context::touch<void>(Resource *obj)
 {
@@ -609,9 +615,15 @@ void Context::endDrag(const bool drop)
 void Context::updateSubresources()
 {
   for(auto it = m_subresources.begin(); it != m_subresources.end();) {
-    if(it->isResourceValid() && ++it->unusedFrames <= SUBRESOURCE_TTL) {
+    // Attached resources are pinned: without this, an attached font unused
+    // for SUBRESOURCE_TTL frames loses its ImFont and hitches when the
+    // script needs it again. Detaching lets the TTL apply once more.
+    if(it->isResourceValid() &&
+        (++it->unusedFrames <= SUBRESOURCE_TTL || isAttached(it->resource))) {
       if(it->unusedFrames == 1)
         it->resource->update(this, it->data);
+      if(it->unusedFrames > SUBRESOURCE_TTL)
+        it->unusedFrames = SUBRESOURCE_TTL + 1; // hold below overflow
       ++it;
     }
     else {
