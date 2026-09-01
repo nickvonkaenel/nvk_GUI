@@ -251,6 +251,15 @@ void Win32Window::show()
   const auto exStyle {GetWindowLong(m_hwnd, GWL_EXSTYLE)};
   if(exStyle & WS_EX_DLGMODALFRAME)
     SetWindowLongPtr(m_hwnd, GWL_EXSTYLE, m_exStyle);
+
+  // SW_SHOW activates the window and DefWindowProc(WM_ACTIVATE) normally
+  // moves keyboard focus along, but be explicit so that keys typed right
+  // after the window is created (eg. via Present during the script's first
+  // defer callback) deterministically reach the script instead of falling
+  // through to REAPER's main window. Same-process, so no
+  // SetForegroundWindow restrictions apply.
+  if(!isDocked() && !(m_viewport->Flags & ImGuiViewportFlags_NoFocusOnAppearing))
+    setFocus();
 }
 
 void Win32Window::setPosition(const ImVec2 pos)
