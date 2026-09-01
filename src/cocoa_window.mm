@@ -94,6 +94,15 @@ void CocoaWindow::show()
 {
   Window::show();
   [m_eventHandler watchView:m_view context:m_ctx];
+
+  // Window::show's SW_SHOW made the window key (makeKeyAndOrderFront in
+  // SWELL), but the InputView only becomes first responder one runloop
+  // later via the WM_SETFOCUS handler's dispatch_async. Take keyboard
+  // focus synchronously so that keys typed right after the window is
+  // created (eg. via Present during the script's first defer callback)
+  // reach the script instead of falling through to REAPER's main window.
+  if(!isDocked() && !(m_viewport->Flags & ImGuiViewportFlags_NoFocusOnAppearing))
+    setFocus();
 }
 
 void CocoaWindow::setPosition(ImVec2 pos)
