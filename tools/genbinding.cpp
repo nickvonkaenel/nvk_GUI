@@ -429,10 +429,10 @@ namespace ImGui {
 #ifdef REAIMGUIAPI_IMPLEMENT
 void ImGui::init(void *(*plugin_getapi)(const char *))
 {
-  void *(*get_func)(const char *v, const char *n) noexcept = reinterpret_cast<decltype(get_func)>(plugin_getapi("ImGui__getapi"));
-  details::last_error = reinterpret_cast<decltype(details::last_error)>(plugin_getapi("ImGui__geterr"));
+  void *(*get_func)(const char *v, const char *n) noexcept = reinterpret_cast<decltype(get_func)>(plugin_getapi("NvkGui__getapi"));
+  details::last_error = reinterpret_cast<decltype(details::last_error)>(plugin_getapi("NvkGui__geterr"));
   if(!get_func || !details::last_error)
-    throw ImGui_Error {"ReaImGui is not installed or too old"};
+    throw ImGui_Error {"nvk_GUI is not installed or too old"};
 )";
 
   for(const Function &func : g_funcs) {
@@ -475,7 +475,7 @@ static std::string zigType(const Type type, bool isOptional = false)
     base = noptr;
 
   if(!type.isString()) {
-    constexpr std::string_view prefix {"ImGui_"};
+    constexpr std::string_view prefix {"NvkGui_"};
     if(base.substr(0, prefix.size()) == prefix) {
       base = base.substr(prefix.size()) + "Ptr";
       isOptional = false;
@@ -592,11 +592,11 @@ pub fn init(plugin_getapi: *const fn(name: [*:0]const u8) callconv(.c) ?*anyopaq
   @setRuntimeSafety(false);
 
   const getFunc: ?*const fn(v: [*:0]const u8, n: [*:0]const u8) callconv(.c) *anyopaque =
-    @ptrCast(plugin_getapi("ImGui__getapi"));
-  getError = @ptrCast(plugin_getapi("ImGui__geterr"));
+    @ptrCast(plugin_getapi("NvkGui__getapi"));
+  getError = @ptrCast(plugin_getapi("NvkGui__geterr"));
 
   if(getFunc == null or getError == null) {
-    last_error = "ReaImGui is not installed or too old";
+    last_error = "nvk_GUI is not installed or too old";
     return error.ImGui;
   }
 
@@ -1454,7 +1454,7 @@ static void luaLSAnnotate(std::ostream &stream, const Function &func)
       const std::string_view defv {arg.defv.empty() ? "nil" : arg.defv};
       stream << " default value = `" << defv << '`';
     }
-    else if(arg.type == "ImGui_Font*")
+    else if(arg.type == "NvkGui_Font*")
       stream << "|nil"; // default font special case
     stream << '\n';
   }

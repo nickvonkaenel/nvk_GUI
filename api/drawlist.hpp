@@ -44,7 +44,7 @@ struct DrawListProxy : ResourceProxy<DrawListProxy, Context, ImDrawList> {
   using Decoder = MakeDecoder<Window, Foreground, Background>;
 };
 
-API_REGISTER_TYPE(DrawListProxy*, "ImGui_DrawList*");
+API_REGISTER_TYPE(DrawListProxy*, "NvkGui_DrawList*");
 
 class DrawListSplitter : public Resource {
 public:

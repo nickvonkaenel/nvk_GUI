@@ -49,28 +49,28 @@ API_FUNC(0_7, void, GetVersion,
     snprintf(reaimgui_version, reaimgui_version_sz, "%s", REAIMGUI_VERSION);
 }
 
-#define RESOURCE_ISVALID(klass)          \
-  if(!strcmp(type, "ImGui_" #klass "*")) \
+#define RESOURCE_ISVALID(klass)             \
+  if(!strcmp(type, API_PREFIX #klass "*")) \
     return Resource::isValid(static_cast<klass *>(pointer))
-#define RESOURCEPROXY_ISVALID(klass)     \
-  if(!strcmp(type, "ImGui_" #klass "*")) \
+#define RESOURCEPROXY_ISVALID(klass)        \
+  if(!strcmp(type, API_PREFIX #klass "*")) \
     return klass::isValid(static_cast<klass *>(pointer));
 
 API_FUNC(0_3, bool, ValidatePtr, (void*,pointer) (const char*,type),
 R"(Return whether the given pointer is a valid instance of one of the following
 types (indentation represents inheritance):
 
-- ImGui_Context*
-- ImGui_DrawList*
-- ImGui_DrawListSplitter*
-- ImGui_Font*
-- ImGui_Function*
-- ImGui_Image*
-  - ImGui_Bitmap*
-  - ImGui_ImageSet*
-- ImGui_ListClipper*
-- ImGui_TextFilter*
-- ImGui_Viewport*)")
+- NvkGui_Context*
+- NvkGui_DrawList*
+- NvkGui_DrawListSplitter*
+- NvkGui_Font*
+- NvkGui_Function*
+- NvkGui_Image*
+  - NvkGui_Bitmap*
+  - NvkGui_ImageSet*
+- NvkGui_ListClipper*
+- NvkGui_TextFilter*
+- NvkGui_Viewport*)")
 {
 
   RESOURCE_ISVALID(Context);
