@@ -70,8 +70,20 @@ types (indentation represents inheritance):
   - NvkGui_ImageSet*
 - NvkGui_ListClipper*
 - NvkGui_TextFilter*
-- NvkGui_Viewport*)")
+- NvkGui_Viewport*
+
+Stock ReaImGui's ImGui_* type names are accepted as aliases, so scripts
+written against stock validate unchanged.)")
 {
+  // Scripts hardcode stock's type names in ValidatePtr calls (e.g.
+  // ValidatePtr(ctx, 'ImGui_Context*')); translate them to ours so the
+  // wrapper's prefix-agnosticism extends to type strings.
+  constexpr std::string_view legacy {"ImGui_"}; // rebrand-allow
+  std::string translated;
+  if(!strncmp(type, legacy.data(), legacy.size())) {
+    translated = API_PREFIX + std::string {type + legacy.size()};
+    type = translated.c_str();
+  }
 
   RESOURCE_ISVALID(Context);
   RESOURCE_ISVALID(DrawListSplitter);
