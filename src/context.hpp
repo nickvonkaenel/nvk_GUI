@@ -63,6 +63,7 @@ public:
   void attach(Resource *);
   void detach(Resource *);
   bool isAttached(Resource *) const;
+  bool usesSharedAtlas() const;
 
   template<typename T>
   T *touch(Resource *r) { return static_cast<T *>(touch<void>(r)); }

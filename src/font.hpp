@@ -63,6 +63,7 @@ public:
 
   ImFont *instance(Context *ctx);
 
+  const FontSource &source() const { return m_src; }
   int legacySize() const { return m_size; }
   void setLegacySize(int sz) { m_size = sz; }
 

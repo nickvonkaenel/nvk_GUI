@@ -6,6 +6,7 @@ src_sources = files([
   'docker.cpp',
   'error.cpp',
   'font.cpp',
+  'font_registry.cpp',
   'function.cpp',
   'image.cpp',
   'jpeg_image.cpp',
