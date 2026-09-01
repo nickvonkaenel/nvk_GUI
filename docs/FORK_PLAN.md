@@ -165,6 +165,15 @@ loss with N contexts on one device; teardown order at REAPER exit.
    1–2 frames to settle after any change; scripts still need their defer callbacks to
    run (only skip the render/present, not the script). Upstream unlikely to take
    this — genuine fork material.
+
+   **Tried and rejected (2026-09-01).** Built as `SetIdleHint` + `WantsFrame`,
+   with a `scr.idle_safe` opt-in in nvk-ReaScripts' shared loop, then removed.
+   NAVIGATE saved only ~3.6 CPU points, and hover highlights lagged at the
+   wake/skip boundary: hovering an *unfocused* window is precisely where the
+   idle gate is open, so every pointer pause let skipping resume and the next
+   highlight change paid a wake. No script ever opted in. If revisited, solve
+   hover first — stay awake the whole time the pointer is inside any of the
+   context's windows, not just while it moves.
 4. **Native custom widgets in the fork** (`NvkGui_DrawX(ctx, reaper_array_data, …)`)
    for draw-heavy UIs (grids, meters, arrange-style views). Three performance tiers:
    - Lua per call ≈ µs ⇒ 10–20k calls/frame = ms of pure dispatch;
