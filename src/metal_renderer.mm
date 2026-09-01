@@ -179,6 +179,11 @@ MetalRenderer::Shared::Shared()
 
 MetalRenderer::Shared::~Shared()
 {
+  // As a ProcessShared block this destructor runs at plugin unload with no
+  // ImGui context alive; every context swept its own textures when it died.
+  if(!ImGui::GetCurrentContext())
+    return;
+
   for(ImTextureData *tex : ImGui::GetPlatformIO().Textures) {
     if(tex->GetTexID() != ImTextureID_Invalid)
       deleteTexture(tex);
@@ -267,7 +272,9 @@ MetalRenderer::MetalRenderer(RendererFactory *factory, Window *window)
   m_shared = factory->getSharedData<Shared>();
   if(!m_shared) {
     m_shared = std::make_shared<Shared>();
-    factory->setSharedData(m_shared);
+    factory->setSharedData(m_shared, [](void *shared, ImTextureData *tex) {
+      static_cast<Shared *>(shared)->deleteTexture(tex);
+    });
   }
 
   static ClassImport _MTLRenderPassDescriptor {METAL, "MTLRenderPassDescriptor"};

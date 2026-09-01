@@ -194,6 +194,17 @@ Context::~Context()
   for(Subresource &sr : m_subresources)
     sr.data.uninstall(this);
 
+  // GPU-release this context's textures: a ProcessShared block outlives the
+  // last window, so its destructor no longer sweeps them on our behalf
+  for(ImTextureData *tex : m_imgui->IO.Fonts->TexList) {
+    if(tex->GetTexID() != ImTextureID_Invalid)
+      m_rendererFactory->destroyTexture(tex);
+  }
+  for(ImTextureData *tex : m_imgui->UserTextures) {
+    if(tex->GetTexID() != ImTextureID_Invalid)
+      m_rendererFactory->destroyTexture(tex);
+  }
+
   for(ImTextureData *tex : m_imgui->UserTextures) {
     IM_ASSERT(tex->TexID == ImTextureID_Invalid); // renderer did clean up
     tex->Pixels = nullptr;
