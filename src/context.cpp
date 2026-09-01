@@ -294,25 +294,29 @@ void Context::wake()
     m_wakeFrames = WAKE_FRAMES;
 }
 
+void Context::wakeOnWindowEvents()
+{
+  // window events (move/resize/close requests set by the platform windows,
+  // consumed by the next NewFrame) cancel idle frame-skipping
+  const ImGuiPlatformIO &pio {m_imgui->PlatformIO};
+  for(int i {}; i < pio.Viewports.Size; ++i) {
+    const ImGuiViewport *viewport {pio.Viewports[i]};
+    if(viewport->PlatformRequestMove || viewport->PlatformRequestResize ||
+        viewport->PlatformRequestClose) {
+      wake();
+      return;
+    }
+  }
+}
+
 bool Context::skipIdleFrame()
 {
-  // the hint only covers the frame it was given in: scripts re-assert
-  // idleness on every frame they know to be static
-  const bool hint {m_idleHint};
-  m_idleHint = false;
-
   if(m_wakeFrames) {
     --m_wakeFrames;
-    m_idleFrames = 0;
     return false;
   }
 
-  if(!hint || ++m_idleFrames >= IDLE_REPAINT_INTERVAL) {
-    m_idleFrames = 0;
-    return false;
-  }
-
-  return true;
+  return m_idleHint;
 }
 
 template<>
@@ -336,6 +340,22 @@ bool Context::heartbeat()
 
   if(m_frameCallback)
     m_frameCallback(this);
+
+  if(m_idleHint) {
+    // needed here too: beginFrame's poll never runs for a script that skips
+    // its frames entirely (WantsFrame + a sticky idle hint), and the request
+    // flags persist until a NewFrame consumes them
+    wakeOnWindowEvents();
+
+    // safety-net repaint: whether the script skips rendering or whole
+    // frames, ask for one real rendered frame every IDLE_REPAINT_INTERVAL
+    // ticks as protection against missed invalidations
+    if(++m_idleFrames >= IDLE_REPAINT_INTERVAL) {
+      m_idleFrames = 0;
+      if(!m_wakeFrames)
+        m_wakeFrames = 1;
+    }
+  }
 
   if(m_imgui->WithinFrameScope && !endFrame(true))
     return false;
@@ -365,17 +385,7 @@ bool Context::beginFrame() try
   touch<void>(m_font);
   assert(!m_imgui->WithinFrameScope);
 
-  // window events (move/resize/close requests set by the platform windows,
-  // consumed by the upcoming NewFrame) cancel idle frame-skipping
-  const ImGuiPlatformIO &pio {m_imgui->PlatformIO};
-  for(int i {}; i < pio.Viewports.Size; ++i) {
-    const ImGuiViewport *viewport {pio.Viewports[i]};
-    if(viewport->PlatformRequestMove || viewport->PlatformRequestResize ||
-        viewport->PlatformRequestClose) {
-      wake();
-      break;
-    }
-  }
+  wakeOnWindowEvents();
 
   Platform::updateMonitors(); // TODO only if changed
 
@@ -422,6 +432,7 @@ bool Context::endFrame(const bool render) try
     ImGui::UpdatePlatformWindows();
     return true;
   }
+  m_idleFrames = 0; // rendering resets the safety-net repaint countdown
 
   updateCursor();
   updateDragDrop();

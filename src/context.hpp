@@ -74,6 +74,9 @@ public:
   bool enterFrame();
   void present();
   void setIdleHint(bool idle) { m_idleHint = idle; }
+  // false while the idle hint stands and no wake or safety-net repaint is
+  // pending: the script may skip submitting this frame entirely
+  bool wantsFrame() const { return !m_idleHint || m_wakeFrames > 0; }
 
   // for backends
   void mouseInput(int button, bool down);
@@ -111,6 +114,7 @@ private:
   bool beginFrame();
   bool endFrame(bool render);
   bool skipIdleFrame();
+  void wakeOnWindowEvents();
 
   void updateFrameInfo();
   void updateCursor();

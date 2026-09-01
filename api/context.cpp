@@ -97,23 +97,41 @@ the first visible frame). Pointless in steady state.)")
 }
 
 API_FUNC(0_10, void, SetIdleHint, (Context*,ctx) (bool,idle),
-R"(Assert that this frame's content is static: the frame is not rendered nor
-presented, leaving the last rendered frame on screen. The script's defer loop
-and all of its drawing calls keep running as usual (at a much lower cost) and
-object lifetime management is unaffected.
+R"(Assert that the UI is static: while the hint stands, frames are not
+rendered nor presented, leaving the last rendered frame on screen. Object
+lifetime management is unaffected. Only assert idleness when this is certain
+— a change made while idle stays stale on screen until the next wake-up.
 
-The hint only covers the current frame: call it every frame while the UI is
-known to be static (nothing animating, no pending changes). Only assert
-idleness when this is certain — a frame skipped in error stays stale on
-screen until the next wake-up.
+The hint stays in effect until SetIdleHint(false) or any user interaction
+with the context's windows (mouse, keyboard, wheel, window move/resize/close,
+drag and drop, focus loss), which wakes the context for a couple of frames —
+so re-assert it every frame the UI is known to be static. A frame is still
+rendered periodically (roughly every half second to second) as a safety net
+against missed invalidations.
 
-The hint is ignored for a couple of frames after any user interaction with
-the context's windows (mouse, keyboard, wheel, window move/resize/close,
-drag and drop, focus loss), and a frame is still rendered about once per
-second as a safety net against missed invalidations.)")
+While the hint stands, the script may go further and skip submitting frames
+altogether when WantsFrame returns false, eliminating its per-frame drawing
+cost too. This call and WantsFrame count as using the context, keeping it
+alive without starting a frame.)")
 {
   assertValid(ctx);
   ctx->setIdleHint(idle);
+}
+
+API_FUNC(0_10, bool, WantsFrame, (Context*,ctx),
+R"(Returns false while an idle hint (SetIdleHint) stands and no wake-up or
+safety-net repaint is pending: the script may then skip its drawing code
+(and every other ImGui call) entirely for this defer cycle — the windows
+keep showing the last rendered frame. Returns true when a frame should be
+submitted normally. Counts as using the context, keeping it alive on
+skipped cycles without starting a frame.
+
+Note that most ImGui functions start a new frame implicitly: on cycles
+spent idle, call nothing on this context besides WantsFrame/SetIdleHint
+(and other functions documented as not entering a frame).)")
+{
+  assertValid(ctx);
+  return ctx->wantsFrame();
 }
 
 API_SUBSECTION("Options",
