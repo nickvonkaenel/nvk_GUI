@@ -75,6 +75,9 @@ on/off pairs, transport stopped, mouse untouched, 12–15 × 1s `ps` samples.
   by design. Further SIGNAL idle wins are script-side (skip analyzer
   updates when idle), not renderer-side.
 
-Wired into nvk-ReaScripts' shared Loop.End behind a conservative gate
-(fork present + not init/exit/focused + transport stopped + no
-`scr.keep_awake` veto) and into the persistent-mode dormant keepalive.
+Wired into nvk-ReaScripts' shared Loop.End as a strict opt-in
+(`scr.idle_safe = true` at script startup, gated further on unfocused +
+transport stopped) and into the persistent-mode dormant keepalive.
+SIGNAL and Create do not opt in: they animate on their own in too many
+places to hook invalidation reliably, and their render cost was the
+small share of their idle CPU anyway (see above).
