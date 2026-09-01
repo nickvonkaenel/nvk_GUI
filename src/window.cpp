@@ -217,8 +217,19 @@ void Window::show()
 
   if(m_viewport->Flags & ImGuiViewportFlags_NoFocusOnAppearing)
     ShowWindow(m_hwnd, SW_SHOWNA);
-  else
+  else {
     ShowWindow(m_hwnd, SW_SHOW);
+
+    // The window takes keyboard focus on appearing (see the platform show
+    // overrides), but WantCaptureKeyboard was computed at this frame's
+    // NewFrame, before the window existed. Until the next frame recomputes
+    // it, hwndInfo would report NotInTextField for keys typed right after
+    // creation, making REAPER run their global shortcut in addition to the
+    // window receiving them. Claim the keyboard for the remainder of this
+    // frame and the next; ImGui's own state takes over afterwards.
+    m_ctx->IO().WantCaptureKeyboard = true;
+    ImGui::SetNextFrameWantCaptureKeyboard(true);
+  }
 }
 
 void Window::setFocus()
