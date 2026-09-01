@@ -4,7 +4,7 @@
 #
 # src/version.rc.in is excluded because its REAIMGUI_VERSION* macro names
 # come from genversion and are not user-visible strings.
-hits=$(grep -rn '"ReaImGui\|"reaimgui\|"REAIMGUI\|"imgui\|ReaTeam' \
+hits=$(grep -rn '"ReaImGui\|"reaimgui\|"REAIMGUI\|"imgui\|"ImGui_\|ReaTeam' \
   src api shims meson.build | grep -v 'src/version\.rc\.in')
 
 if [ -n "$hits" ]; then

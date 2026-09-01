@@ -39,6 +39,6 @@ struct ViewportProxy : ResourceProxy<ViewportProxy, Context, ImGuiViewport> {
   using Decoder = MakeDecoder<Main, Window>;
 };
 
-API_REGISTER_TYPE(ViewportProxy*, "ImGui_Viewport*");
+API_REGISTER_TYPE(ViewportProxy*, "NvkGui_Viewport*");
 
 #endif
