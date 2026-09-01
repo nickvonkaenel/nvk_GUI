@@ -304,6 +304,21 @@ cpu_fine_clip_rect_* only takes effect if all four are non-nil.)")
     text, nullptr, API_GET(wrap_width), cpu_fine_clip_rect_ptr);
 }
 
+API_FUNC(0_10, void, DrawList_SetTextPixelSnap, (DrawListProxy*,draw_list)
+(bool,enabled),
+R"(Toggle whole-pixel snapping of text positions for subsequent AddText/AddTextEx
+calls on this draw list. Snapping is enabled by default; disabling it renders
+glyphs at fractional positions (smooth sub-pixel motion for scrolling text, at
+the cost of slightly softer edges). The setting resets to enabled at the start
+of every frame.)")
+{
+  ImDrawList *dl {draw_list->get()};
+  if(enabled)
+    dl->Flags &= ~ImDrawListFlags_NoTextPixelSnap;
+  else
+    dl->Flags |= ImDrawListFlags_NoTextPixelSnap;
+}
+
 static std::vector<ImVec2> makePointsArray(const reaper_array *points)
 {
   assertValid(points);

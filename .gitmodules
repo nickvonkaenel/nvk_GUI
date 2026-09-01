@@ -1,6 +1,6 @@
 [submodule "imgui"]
 	path = subprojects/imgui/imgui
-	url = https://github.com/cfillion/imgui.git
+	url = https://github.com/nickvonkaenel/imgui.git
 [submodule "reaper-sdk"]
 	path = subprojects/reaper-sdk/reaper-sdk
 	url = https://github.com/justinfrankel/reaper-sdk.git
