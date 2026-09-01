@@ -51,3 +51,30 @@ window existing: without Present 3 frames / 41.7 ms; with Present on the
 opening frames 2 frames / 17.2 ms. Windows with saved sizes skip the
 auto-fit frame and should show after 1. Wired into nvk-ReaScripts'
 Loop.End for the first 3 frames and on persistent-mode reopen.
+
+## 2026-08-31 — Phase 2: idle frame-skipping (SetIdleHint)
+
+Same machine. Note: absolute CPU numbers are NOT comparable to the
+baseline above (bare REAPER measured 7.0% this session vs 18.2% then —
+different project/session state). All comparisons below are same-session
+on/off pairs, transport stopped, mouse untouched, 12–15 × 1s `ps` samples.
+
+### Synthetic heavy static window (900×700: 720 text cells + 400 rects)
+
+- hint off: 15.7% · hint on: **8.4%** · bare REAPER: 7.0%.
+- Render+present was ~7.3 of the window's ~8.7 points; SetIdleHint removes
+  ~85% of the window's total idle cost. The residual ~1.4 points is the
+  Lua draw-call submission + NewFrame bookkeeping that deliberately keeps
+  running (the skip is render-side only).
+
+### nvk_SIGNAL (docked module set, transport stopped, unfocused)
+
+- idle-skip off: 18.7% · on: **16.2%** (bare REAPER 7.0%).
+- −2.5 points: SIGNAL's render cost is fully skipped, but most of its
+  idle cost is Lua/native analyzer updates that keep running every frame
+  by design. Further SIGNAL idle wins are script-side (skip analyzer
+  updates when idle), not renderer-side.
+
+Wired into nvk-ReaScripts' shared Loop.End behind a conservative gate
+(fork present + not init/exit/focused + transport stopped + no
+`scr.keep_awake` veto) and into the persistent-mode dormant keepalive.
