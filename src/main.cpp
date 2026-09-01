@@ -31,6 +31,8 @@
 #include "window.hpp"
 
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <imgui/imgui.h>
 #include <WDL/wdltypes.h> // WDL_DIRCHAR_STR
 
@@ -126,6 +128,30 @@ static bool loadAPI(void *(*getFunc)(const char *))
   return true;
 }
 
+static void migrateStockState()
+{
+  // One-time import of stock ReaImGui's saved window state (position, size,
+  // docking) so existing layouts carry over to the fork. Context ini
+  // filenames are label hashes and the rename only changed the directory,
+  // so a straight copy applies. The marker file makes this run once:
+  // resetting or deleting fork state later must not resurrect stock's.
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  const fs::path resource {widen(GetResourcePath())};
+  const fs::path src {resource / "ReaImGui"}, // rebrand-allow
+                 dst {resource / "NvkGui"},
+                 marker {dst / ".migrated-from-stock"};
+  if(fs::exists(marker, ec) || !fs::is_directory(src, ec))
+    return;
+  fs::create_directories(dst, ec);
+  for(const auto &entry : fs::directory_iterator {src, ec}) {
+    if(entry.path().extension() == ".ini")
+      fs::copy_file(entry.path(), dst / entry.path().filename(),
+        fs::copy_options::overwrite_existing, ec);
+  }
+  std::ofstream {marker}; // write the marker even if some copies failed
+}
+
 static bool meetsReaperVersionFloor()
 {
   // REAPER 7.28+ exposes __reascript_runcnt so detecting blocked defer
@@ -178,6 +204,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(
 
   IMGUI_CHECKVERSION();
 
+  migrateStockState();
   Window::s_instance = instance;
   API::setup();
   Action::setup();
