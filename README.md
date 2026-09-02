@@ -8,9 +8,20 @@ state (ini files, screensets, action IDs, prefs page, ObjC classes) under
 its own names. Stock ReaImGui keeps serving third-party scripts; our
 scripts depend on this fork. Requires REAPER 7.28+.
 
+This repository is developed in place as the `vendor/nvk_GUI` submodule of
+nvk_API (`~/repos/nvk_API/vendor/nvk_GUI`); that is the only working copy.
+A second clone drifts behind and swallows changes patched into it, so
+`~/repos/reaimgui` is a symlink here. Commit here, push, then bump the
+submodule pointer in nvk_API. The Dear ImGui patches this fork needs live on
+the `nvk-patches` branch of `https://github.com/nickvonkaenel/imgui`; keep them
+on that branch and pushed, or `git submodule update` will strand them.
+
 Branch layout:
 - `main` — the fork: upstream + our patch series (rebrand first, then
   functional changes).
+- `archive/*` — retired history kept for reference: `pre-nvk_GUI-rewrite`
+  (the lineage before the rebrand rewrite) and `font-system-fallback-pr`
+  (the branch prepared for an upstream PR).
 - `master` — tracks `upstream/master` (cfillion's Codeberg). To pull
   upstream changes: `git fetch upstream && git checkout master &&
   git merge --ff-only upstream/master && git checkout main &&
