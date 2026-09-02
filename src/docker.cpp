@@ -504,7 +504,10 @@ ImVec2 DockerHost::getSize() const
 
 void DockerHost::setFocus()
 {
-  m_window->setFocus();
+  // SetFocus alone does not select the tab, so focusing a window sitting in a
+  // background tab of a REAPER docker would take the keyboard without ever
+  // showing the window. DockWindowActivate2 brings the tab forward first.
+  DockWindowActivate2(m_window->nativeHandle());
 }
 
 bool DockerHost::hasFocus() const
