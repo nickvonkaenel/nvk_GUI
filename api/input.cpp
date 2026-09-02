@@ -304,6 +304,11 @@ API_ENUM(0_1, InputTextFlags_NoUndoRedo,
 API_ENUM(0_10, InputTextFlags_ElideLeft,
 R"(When text doesn't fit, elide left side to ensure right side stays visible.
    Useful for path/filenames. Single-line only!)");
+API_ENUM(0_10, InputTextFlags_WordWrap,
+R"(InputTextMultiline only: word-wrap lines that are too long for the
+   frame width instead of scrolling horizontally. Stored text is unchanged
+   (no newlines are inserted). Cannot be combined with InputTextFlags_Password.
+   The vertical scrollbar width is always reserved.)");
 
 API_SECTION_P(flags, "Callback features");
 API_ENUM(0_8_5, InputTextFlags_CallbackCompletion,
