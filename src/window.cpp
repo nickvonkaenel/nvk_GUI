@@ -256,7 +256,12 @@ void Window::mouseDown(const ImGuiMouseButton btn)
     Platform::setCapture(m_hwnd);
 
   // give keyboard focus when docked (+ focus on right/middle click on macOS)
-  if(!(m_viewport->Flags & ImGuiViewportFlags_NoFocusOnClick))
+  // An always-on-top window clicked from another application stays passive:
+  // taking focus would bring REAPER to the foreground.
+  const ImGuiViewportFlags flags {effectiveFlags()};
+  const bool passive
+    {(flags & ReaImGuiViewportFlags_AlwaysOnTop) && !Platform::isAppActive()};
+  if(!(flags & ImGuiViewportFlags_NoFocusOnClick) && !passive)
     setFocus();
 
   updateModifiers();
@@ -362,6 +367,28 @@ const char *Window::getSwellClass() const
   return m_ctx->IO().WantCaptureKeyboard ? "Lua_LICE_gfx_standalone" : CLASS_NAME;
 }
 #endif
+
+ImGuiViewportFlags Window::effectiveFlags() const
+{
+  ImGuiViewportFlags flags {m_viewport->Flags};
+
+  // Popups, menus and tooltips get a viewport of their own without inheriting
+  // the window class of the window that opened them. They must stay above
+  // other applications along with their always-on-top parent.
+  ImGuiID parentId {m_viewport->ParentViewportId};
+  for(int depth {}; parentId && depth < 16; ++depth) {
+    const ImGuiViewport *parent {ImGui::FindViewportByID(parentId)};
+    if(!parent || parent == m_viewport)
+      break;
+    if(parent->Flags & ReaImGuiViewportFlags_AlwaysOnTop) {
+      flags |= ReaImGuiViewportFlags_AlwaysOnTop;
+      break;
+    }
+    parentId = parent->ParentViewportId;
+  }
+
+  return flags;
+}
 
 HWND Window::parentHandle()
 {

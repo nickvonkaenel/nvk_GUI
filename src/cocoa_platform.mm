@@ -166,3 +166,8 @@ void Platform::releaseCapture()
 {
   g_fakeCapture = nullptr;
 }
+
+bool Platform::isAppActive()
+{
+  return [NSApp isActive];
+}

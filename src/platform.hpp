@@ -40,6 +40,7 @@ namespace Platform {
   float scaleForWindow(HWND);
   HCURSOR getCursor(ImGuiMouseCursor);
   HWND getCapture();
+  bool isAppActive(); // whether REAPER is the foreground application
   void setCapture(HWND);
   void releaseCapture();
 };

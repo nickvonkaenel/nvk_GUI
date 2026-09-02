@@ -369,16 +369,26 @@ std::optional<LRESULT> Win32Window::handleMessage
     break;
   }
   case WM_ACTIVATEAPP:
-  case WM_ENABLE:
-    if(m_viewport->Flags & ImGuiViewportFlags_TopMost) {
+  case WM_ENABLE: {
+    // TopMost windows only stay on top while REAPER is the active application
+    const ImGuiViewportFlags flags {effectiveFlags()};
+    if((flags & ImGuiViewportFlags_TopMost) &&
+        !(flags & ReaImGuiViewportFlags_AlwaysOnTop)) {
       SetWindowPos(m_hwnd, wParam ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
         SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOSIZE);
     }
     break;
-  case WM_MOUSEACTIVATE:
-    if(m_viewport->Flags & ImGuiViewportFlags_NoFocusOnClick)
+  }
+  case WM_MOUSEACTIVATE: {
+    const ImGuiViewportFlags flags {effectiveFlags()};
+    if(flags & ImGuiViewportFlags_NoFocusOnClick)
+      return MA_NOACTIVATE;
+    // don't bring REAPER to the foreground when clicking on an always-on-top
+    // window from another application (the click is still delivered)
+    if((flags & ReaImGuiViewportFlags_AlwaysOnTop) && !Platform::isAppActive())
       return MA_NOACTIVATE;
     break;
+  }
   case WM_DPICHANGED: {
     m_dpi = LOWORD(wParam);
     m_viewport->DpiScale = scaleForDpi(m_dpi);

@@ -25,14 +25,25 @@
 #include "platform.hpp"
 #include "renderer.hpp"
 
+#include <algorithm>
 #include <imgui/imgui_internal.h>
+#include <objc/message.h>
+#include <objc/runtime.h>
 #include <reaper_plugin_secrets.h>
 
 static_assert(__has_feature(objc_arc),
   "This file must be built with automatic reference counting enabled.");
 
+constexpr char ALWAYS_ON_TOP_KEY {};
+
+static bool isAlwaysOnTop(NSWindow *window)
+{
+  return !!objc_getAssociatedObject(window, &ALWAYS_ON_TOP_KEY);
+}
+
 @interface SWELLWindowOverride : NSWindow
 - (NSRect)constrainFrameRect:(NSRect)frameRect toScreen:(NSScreen *)screen;
+- (void)setLevel:(NSInteger)level;
 @end
 
 @implementation SWELLWindowOverride
@@ -44,7 +55,52 @@ static_assert(__has_feature(objc_arc),
   // allow setPosition to move the window outside of the woring area
   return frameRect;
 }
+
+- (void)setLevel:(NSInteger)level
+{
+  // SWELL resets the level of every window owned by REAPER's main window
+  // whenever the application is activated or deactivated. Always-on-top
+  // windows keep floating above other applications through those resets.
+  if(CocoaInject::isTarget(self) && isAlwaysOnTop(self))
+    level = std::max<NSInteger>(level, NSFloatingWindowLevel);
+  [super setLevel:level];
+}
 @end
+
+static void setAlwaysOnTop(NSWindow *window, const bool alwaysOnTop)
+{
+  objc_setAssociatedObject(window, &ALWAYS_ON_TOP_KEY,
+    alwaysOnTop ? @YES : nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+  // Private AppKit hook. SWELL's windows are plain NSWindows, which reject
+  // NSWindowStyleMaskNonactivatingPanel; this gives them the same "clicking
+  // doesn't activate the application" behavior (verified on macOS 15). Without
+  // it the window still floats, but clicking on it brings REAPER forward.
+  const SEL setPreventsActivation {@selector(_setPreventsActivation:)};
+  if([window respondsToSelector:setPreventsActivation]) {
+    const auto send {reinterpret_cast<void (*)(id, SEL, BOOL)>(objc_msgSend)};
+    send(window, setPreventsActivation, alwaysOnTop);
+  }
+
+  if(alwaysOnTop) {
+    [window setCollectionBehavior:NSWindowCollectionBehaviorCanJoinAllSpaces |
+                                  NSWindowCollectionBehaviorFullScreenAuxiliary];
+    [window setLevel:NSFloatingWindowLevel];
+    return;
+  }
+
+  [window setCollectionBehavior:NSWindowCollectionBehaviorDefault];
+  [window setLevel:NSNormalWindowLevel];
+
+  // let SWELL put the window back at its owner's level + 1
+  const auto send {reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)};
+  const SEL getOwner {@selector(swellGetOwner)},
+            resetLevels {@selector(swellResetOwnedWindowLevels)};
+  if(![window respondsToSelector:getOwner])
+    return;
+  if(id owner {send(window, getOwner)}; [owner respondsToSelector:resetLevels])
+    send(owner, resetLevels);
+}
 
 CocoaWindow::CocoaWindow(ImGuiViewport *viewport, DockerHost *dockerHost)
   : Window {viewport, dockerHost}
@@ -168,10 +224,19 @@ void CocoaWindow::update()
   if(isDocked())
     return;
 
-  const ImGuiViewportFlags diff {m_previousFlags ^ m_viewport->Flags};
-  m_previousFlags = m_viewport->Flags;
+  const ImGuiViewportFlags flags {effectiveFlags()};
+  const ImGuiViewportFlags diff {m_previousFlags ^ flags};
+  m_previousFlags = flags;
 
   NSWindow *window {[m_view window]};
+
+  // Compared against the window's actual state rather than through diff: a
+  // popup opened from an always-on-top window inherits the bit from its first
+  // update, when m_previousFlags (initialized from the inverted viewport
+  // flags alone) would hide the change.
+  const bool alwaysOnTop {(flags & ReaImGuiViewportFlags_AlwaysOnTop) != 0};
+  if(alwaysOnTop != isAlwaysOnTop(window))
+    setAlwaysOnTop(window, alwaysOnTop);
 
   if(diff & ImGuiViewportFlags_NoDecoration) {
     if(m_viewport->Flags & ImGuiViewportFlags_NoDecoration) {

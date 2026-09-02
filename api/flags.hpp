@@ -18,6 +18,8 @@
 #ifndef REAIMGUI_FLAGS_HPP
 #define REAIMGUI_FLAGS_HPP
 
+#include "../src/viewport_flags.hpp"
+
 #include <imgui/imgui_internal.h> // ImHashStr, internal ImGuiInputTextFlags
 
 template<typename T>
@@ -39,13 +41,26 @@ private:
 enum {
   // NoBringToFrontOnFocus isn't exposed in ReaImGui
   ReaImGuiWindowFlags_TopMost = ImGuiWindowFlags_NoBringToFrontOnFocus,
+  // unused by Dear ImGui: its public flags end at 1 << 19 and the internal
+  // ones start at 1 << 23
+  ReaImGuiWindowFlags_AlwaysOnTop = 1 << 20,
 };
 
 class WindowFlags : public Flags<ImGuiWindowFlags> {
 public:
   WindowFlags(int flags) : Flags {flags}
   {
-    if(*this & ReaImGuiWindowFlags_TopMost) {
+    if(*this & ReaImGuiWindowFlags_AlwaysOnTop) {
+      ImGuiWindowClass alwaysOnTop;
+      alwaysOnTop.ClassId = ImHashStr("AlwaysOnTop");
+      alwaysOnTop.ViewportFlagsOverrideSet =
+        ImGuiViewportFlags_TopMost | ReaImGuiViewportFlags_AlwaysOnTop;
+      // the flag is meaningless while docked, don't prevent docking
+      alwaysOnTop.DockingAllowUnclassed = true;
+      ImGui::SetNextWindowClass(&alwaysOnTop);
+      *this &= ~(ReaImGuiWindowFlags_AlwaysOnTop | ReaImGuiWindowFlags_TopMost);
+    }
+    else if(*this & ReaImGuiWindowFlags_TopMost) {
       ImGuiWindowClass topmost;
       topmost.ClassId = ImHashStr("TopMost");
       topmost.ViewportFlagsOverrideSet = ImGuiViewportFlags_TopMost;

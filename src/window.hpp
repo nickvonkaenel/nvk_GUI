@@ -20,6 +20,7 @@
 
 #include "plugin_register.hpp"
 #include "viewport.hpp"
+#include "viewport_flags.hpp"
 #include "win32_unicode.hpp"
 
 #include <memory>
@@ -29,6 +30,7 @@
 class DockerHost;
 class Renderer;
 typedef int ImGuiMouseButton;
+typedef int ImGuiViewportFlags;
 
 class Window : public Viewport {
 public:
@@ -61,6 +63,10 @@ public:
   void mouseUp(ImGuiMouseButton);
   void releaseMouse();
   bool isDocked() const { return !!m_dockerHost; }
+
+  // m_viewport->Flags plus the always-on-top state inherited from the
+  // viewports this one was opened from (popups, menus and tooltips)
+  ImGuiViewportFlags effectiveFlags() const;
 
   const char *getSwellClass() const;
 

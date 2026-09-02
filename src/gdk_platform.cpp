@@ -189,3 +189,9 @@ void Platform::releaseCapture()
 {
   ReleaseCapture();
 }
+
+bool Platform::isAppActive()
+{
+  // Always-on-top windows only behave like TopMost ones on this platform.
+  return true;
+}

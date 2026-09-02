@@ -703,3 +703,8 @@ API_ENUM(0_1, WindowFlags_NoInputs,
 
 API_ENUM_NS(0_5_5, ReaImGui, WindowFlags_TopMost,
   "Show the window above all non-topmost windows.");
+API_ENUM_NS(0_10, ReaImGui, WindowFlags_AlwaysOnTop,
+R"(Keep the window above every application's windows, even while REAPER is in
+   the background, and don't bring REAPER to the foreground when clicking on it
+   (the window then doesn't take keyboard focus either).
+   Implies WindowFlags_TopMost. Has no effect while docked.)");

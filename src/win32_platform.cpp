@@ -302,3 +302,11 @@ void Platform::releaseCapture()
   *ConfigVar<int> {"alwaysallowkb"} = alwaysallowkb_val;
   ReleaseCapture();
 }
+
+bool Platform::isAppActive()
+{
+  DWORD pid {};
+  if(HWND foreground {GetForegroundWindow()})
+    GetWindowThreadProcessId(foreground, &pid);
+  return pid == GetCurrentProcessId();
+}
