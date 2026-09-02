@@ -279,6 +279,10 @@ R"(Return true when Enter is pressed (as opposed to every time the value was
 API_ENUM(0_8, InputTextFlags_EscapeClearsAll,
 R"(Escape key clears content if not empty, and deactivate otherwise
    (constrast to default behavior of Escape to revert).)");
+API_ENUM(0_10, InputTextFlags_EscapeKeepsEdits,
+R"(Escape key deactivates the field and keeps its current text
+   (contrast to default behavior of Escape to revert to the text the field
+   had when it was activated).)");
 API_ENUM(0_1, InputTextFlags_CtrlEnterForNewLine,
 R"(In multi-line mode, unfocus with Enter, add new line with Ctrl+Enter
    (default is opposite: unfocus with Ctrl+Enter, add line with Enter).)");
