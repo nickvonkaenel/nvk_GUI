@@ -25,26 +25,22 @@ Branch layout:
 - `master` — tracks `upstream/master` (cfillion's Codeberg). To pull
   upstream changes: `git fetch upstream && git checkout master &&
   git merge --ff-only upstream/master && git checkout main &&
-  git merge master`, then run `tools/rebrand_check.sh` and the
-  coexistence smoke test (stock + fork loaded in one REAPER instance).
+  git merge master`, then run `tools/rebrand_check.sh` and the coexistence
+  smoke test (`tools/coexist_smoke.lua`, stock and fork loaded in one REAPER).
+
+Upstream ReaImGui lives at <https://codeberg.org/cfillion/reaimgui>: issues,
+releases and the ReaPack distribution of the stock extension belong there, not
+here. This fork is not distributed at all — it is built from source and
+installed by nvk_API's `build.sh`.
 
 Licensed under the LGPL v3 or later, like upstream (see COPYING.LESSER).
 
----
-
-Original upstream README follows.
-
-# ReaImGui: ReaScript binding for Dear ImGui
-
-[![Build status](https://ci.appveyor.com/api/projects/status/9umkecgrs4sa8odf/branch/master?svg=true)](https://ci.appveyor.com/project/cfillion/reaimgui/branch/master)
-
-This REAPER extension is distributed via [ReaPack](https://reapack.com)
-through the default [ReaTeam Extensions](https://github.com/ReaTeam/Extensions)
-repository.
-
-https://forum.cockos.com/showthread.php?t=250419
-
 ## Build from source
+
+On macOS this is normally built for you: nvk_API's `./build.sh` runs the Meson
+steps below with `-Dresource_path` pointed at the REAPER install, after
+building nvk_API itself. The rest of this section is for building the extension
+on its own.
 
 ### Prerequisites
 
@@ -77,17 +73,23 @@ Additional system dependencies on Linux:
 
 ### Compile and install
 
-Fetch the repository including submodules:
+In the nvk_API checkout the sources are already there; make sure this fork's own
+submodules are:
 
-    $ git clone --recursive --shallow-submodules https://codeberg.org/cfillion/reaimgui.git
+    $ git submodule update --init --recursive
 
-Build ReaImGui using Meson:
+On a machine that has no nvk_API checkout, clone it with its submodules (never
+as a second copy beside that one):
+
+    $ git clone --recursive --shallow-submodules https://github.com/nickvonkaenel/nvk_GUI.git
+
+Build nvk_GUI using Meson:
 
     $ meson setup build
     $ cd build
     $ ninja
 
-The change the installation directory to a portable install:
+To change the installation directory to a portable install:
 
     $ meson configure -Dresource_path=~/path/to/your/portable/install/
 
@@ -99,7 +101,7 @@ Run the test suite using:
 
     $ meson test
 
-Install ReaImGui into your REAPER resource path using:
+Install nvk_GUI into your REAPER resource path using:
 
     $ meson install --tags runtime
 
