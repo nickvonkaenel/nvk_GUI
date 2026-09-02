@@ -4,6 +4,7 @@ test_src = files([
   'compstr_test.cpp',
   'environment.cpp',
   'function_test.cpp',
+  'image_test.cpp',
   'resource_proxy_test.cpp',
   'resource_test.cpp',
   'types_test.cpp',
@@ -15,7 +16,7 @@ gmock_dep = dependency('gmock_main')
 
 tests = executable('tests', test_src,
   dependencies: [common_dep, eel_dep, gmock_dep],
-  link_with: [src], build_by_default: false)
+  link_whole: [src], build_by_default: false) # whole: image decoders self-register
 
 test(meson.project_name(), tests,
   args: ['--gtest_color=yes'], protocol: 'gtest')

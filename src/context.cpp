@@ -236,30 +236,29 @@ void Context::setUserConfigFlags(const int userFlags)
 
 void Context::attach(Resource *obj)
 {
-  if(m_attachments.size() >= 0x400)
+  // Sorted set: isAttached runs once per subresource per frame, and an image
+  // cache attaches thousands of objects.
+  if(m_attachments.size() >= 0x2000)
     throw reascript_error {"exceeded maximum object attachment limit"};
-  if(std::find(m_attachments.begin(), m_attachments.end(), obj)
-      != m_attachments.end())
+  if(m_attachments.contains(obj))
     throw reascript_error {"the object is already attached to this context"};
   else if(!obj->attachable(this))
     throw reascript_error {"the object cannot be attached to this context"};
 
-  m_attachments.push_back(obj);
+  m_attachments.insert(obj);
 }
 
 void Context::detach(Resource *obj)
 {
-  const auto it {std::find(m_attachments.begin(), m_attachments.end(), obj)};
-  if(it == m_attachments.end())
+  if(!m_attachments.contains(obj))
     throw reascript_error {"the object is not attached to this context"};
 
-  m_attachments.erase(it);
+  m_attachments.erase(obj);
 }
 
 bool Context::isAttached(Resource *obj) const
 {
-  return std::find(m_attachments.begin(), m_attachments.end(), obj)
-    != m_attachments.end();
+  return m_attachments.contains(obj);
 }
 
 bool Context::usesSharedAtlas() const

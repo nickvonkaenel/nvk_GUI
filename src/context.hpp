@@ -18,6 +18,7 @@
 #ifndef REAIMGUI_CONTEXT_HPP
 #define REAIMGUI_CONTEXT_HPP
 
+#include "flat_set.hpp"
 #include "resource.hpp"
 
 #include <chrono>
@@ -132,7 +133,7 @@ private:
   FrameCallback m_frameCallback;
   std::chrono::time_point<std::chrono::steady_clock> m_lastFrame; // monotonic
   std::vector<std::string> m_draggedFiles;
-  std::vector<Resource *> m_attachments;
+  FlatSet<Resource *> m_attachments;
   std::vector<Subresource> m_subresources;
   std::string m_name, m_iniFilename;
 

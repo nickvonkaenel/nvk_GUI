@@ -24,11 +24,6 @@
 
 constexpr size_t HEADER_SIZE {8}; // must not be > 8
 
-class PNGImage final : public Bitmap {
-public:
-  PNGImage(std::istream &);
-};
-
 static bool isPNG(std::istream &stream)
 {
   png_byte header[HEADER_SIZE];
@@ -37,12 +32,9 @@ static bool isPNG(std::istream &stream)
   return png_check_sig(header, sizeof(header));
 }
 
-static Image *create(std::istream &stream)
-{
-  return new PNGImage {stream};
-}
+static void decodePNG(std::istream &, PixelBuffer &);
 
-static const Image::RegisterType PNG {&isPNG, &create};
+static const Image::RegisterType PNG {&isPNG, &decodePNG};
 
 static void read(png_structp png, png_bytep data, const png_size_t length)
 {
@@ -85,7 +77,7 @@ static void transformToRGBA(png_structp png, png_infop info)
   png_read_update_info(png, info);
 }
 
-PNGImage::PNGImage(std::istream &stream)
+static void decodePNG(std::istream &stream, PixelBuffer &pixels)
 {
   struct PNG {
     ~PNG() { png_destroy_read_struct(&read, &info, nullptr); }
@@ -106,10 +98,10 @@ PNGImage::PNGImage(std::istream &stream)
   png_read_info(png.read, png.info);
   transformToRGBA(png.read, png.info);
 
-  resize(png_get_image_width(png.read,  png.info),
-         png_get_image_height(png.read, png.info),
-         png_get_rowbytes(png.read,     png.info) /
-         png_get_image_width(png.read,  png.info));
+  pixels.resize(png_get_image_width(png.read,  png.info),
+                png_get_image_height(png.read, png.info),
+                png_get_rowbytes(png.read,     png.info) /
+                png_get_image_width(png.read,  png.info));
 
-  png_read_image(png.read, makeScanlines().data());
+  png_read_image(png.read, pixels.makeScanlines().data());
 }

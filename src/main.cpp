@@ -25,6 +25,7 @@
 #include "api.hpp"
 #include "docker.hpp"
 #include "font_registry.hpp"
+#include "image_loader.hpp"
 #include "function.hpp"
 #include "renderer.hpp"
 #include "resource.hpp"
@@ -195,6 +196,7 @@ extern "C" REAPER_PLUGIN_DLL_EXPORT int REAPER_PLUGIN_ENTRYPOINT(
   if(!rec) {
     API::teardown();
     Resource::destroyAll(); // save context settings
+    ImageLoader::teardown(); // no Bitmap left to adopt a result
     FontRegistry::teardown(); // GPU sweep needs the shared blocks alive
     RendererFactory::teardownSharedData();
     Settings::teardown();

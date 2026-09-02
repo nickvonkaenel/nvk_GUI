@@ -20,11 +20,9 @@
 #include "color.hpp"
 #include "context.hpp"
 #include "error.hpp"
-#include "win32_unicode.hpp"
 
-#include <boost/iostreams/stream.hpp>
+#include <algorithm>
 #include <cmath> // abs
-#include <fstream>
 #include <imgui/imgui.h>
 #include <reaper_plugin_functions.h>
 
@@ -34,17 +32,19 @@ static const Image::RegisterType *&typeHead()
   return head;
 }
 
-Image::RegisterType::RegisterType(const TestFunc test, const CreateFunc create)
-  : m_test {test}, m_create {create}, m_next {typeHead()}
+Image::RegisterType::RegisterType(const TestFunc test, const DecodeFunc decode)
+  : m_test {test}, m_decode {decode}, m_next {typeHead()}
 {
   typeHead() = this;
 }
 
-static Image *create(std::istream &stream)
+void Image::decode(std::istream &stream, PixelBuffer &pixels)
 {
   for(const Image::RegisterType *type {typeHead()}; type; type = type->m_next) {
-    if(type->m_test(stream))
-      return type->m_create(stream);
+    if(type->m_test(stream)) {
+      type->m_decode(stream, pixels);
+      return;
+    }
     else
       stream.seekg(0);
   }
@@ -52,20 +52,29 @@ static Image *create(std::istream &stream)
   throw reascript_error {"unsupported format"};
 }
 
-Image *Image::fromFile(const char *file)
+const std::string &Image::error() const
 {
-  std::ifstream stream;
-  stream.open(WIDEN(file), std::ios_base::binary);
-  if(!stream.good())
-    throw reascript_error {strerror(errno)};
-  return create(stream);
+  static const std::string none;
+  return none;
 }
 
-Image *Image::fromMemory(const char *data, const int size)
+Image *Image::fromFile(const char *file, const bool async)
 {
-  using boost::iostreams::array_source;
-  boost::iostreams::stream<array_source> stream {data, size};
-  return create(stream);
+  // Images are exempt from the short-lived resource guard: a scrolling image
+  // grid legitimately creates and evicts them for hundreds of frames in a row.
+  Resource::bypassGCCheckOnce();
+  std::unique_ptr<Bitmap> bitmap {new Bitmap};
+  bitmap->load(ImageLoader::Job::File, file, async);
+  return bitmap.release();
+}
+
+Image *Image::fromMemory(const char *data, const int size, const bool async)
+{
+  Resource::bypassGCCheckOnce();
+  std::unique_ptr<Bitmap> bitmap {new Bitmap};
+  bitmap->load(ImageLoader::Job::Memory,
+    {data, static_cast<size_t>(std::max(0, size))}, async);
+  return bitmap.release();
 }
 
 struct Bitmap::Update {
@@ -79,26 +88,47 @@ struct Bitmap::Update {
   unsigned char age;
 };
 
-Bitmap::Bitmap() : m_version {}
+// Shared between a Bitmap and the textures installed from it, so an uninstall
+// that outlives the Bitmap (Subresource eviction of a collected resource) can
+// still unregister its texture.
+struct Bitmap::Installs {
+  std::vector<ImTextureData *> textures;
+};
+
+struct ImageTextureData {
+  ImTextureData *tex;
+  std::shared_ptr<Bitmap::Installs> installs;
+  unsigned int version;
+};
+
+Bitmap::Bitmap()
+  : m_installs {std::make_shared<Installs>()},
+    m_sourceKind {ImageLoader::Job::File}, m_version {}, m_state {Ready},
+    m_hasSource {false}, m_keepPixels {false}
 {}
 
-Bitmap::~Bitmap() = default;
+Bitmap::~Bitmap()
+{
+  if(m_job)
+    m_job->cancelled = true;
+}
 
 Bitmap::Bitmap(const int width, const int height, const int format)
   : Bitmap {}
 {
-  resize(width, height, format);
+  m_pixels.resize(width, height, format);
 }
 
 LICEBitmap::LICEBitmap(LICE_IBitmap *bitmap)
 {
-  resize(LICE__GetWidth(bitmap), LICE__GetHeight(bitmap), 4);
+  PixelBuffer &buffer {pixels()};
+  buffer.resize(LICE__GetWidth(bitmap), LICE__GetHeight(bitmap), 4);
 
   const auto stride {LICE__GetRowSpan(bitmap)};
   auto pixels {static_cast<const LICE_pixel *>(LICE__GetBits(bitmap))};
 
-  for(unsigned char *row : makeScanlines()) {
-    for(size_t i {}; i < width(); ++i) {
+  for(unsigned char *row : buffer.makeScanlines()) {
+    for(size_t i {}; i < buffer.width(); ++i) {
       reinterpret_cast<uint32_t *>(row)[i] = (pixels[i] & 0xFF00FF00) |
         (pixels[i] >> 16 & 0x0000FF) | (pixels[i] << 16 & 0xFF0000);
     }
@@ -106,37 +136,56 @@ LICEBitmap::LICEBitmap(LICE_IBitmap *bitmap)
   }
 }
 
-void Bitmap::resize(const int width, const int height, const int format)
-try
+void Bitmap::load(const ImageLoader::Job::Source source, std::string input,
+  const bool async)
 {
-  constexpr int MAX_SIZE {0x2000}; // Direct3D10 Texture2D limit
-
-  if(format != 4)
-    throw reascript_error {"BUG: unexpected pixel format, missing transform?"};
-  if(height > MAX_SIZE || width > MAX_SIZE)
-    throw reascript_error {"image is too big"};
-  m_width = width, m_height = height;
-  m_pixels.resize(m_width * m_height * format);
-}
-catch(const std::bad_alloc &)
-{
-  throw reascript_error {"cannot allocate memory"};
+  m_sourceKind = source;
+  m_hasSource = true;
+  if(async) {
+    m_state = Pending;
+    m_job = ImageLoader::enqueue(source, input);
+  }
+  else
+    ImageLoader::decode(source, input, m_pixels);
+  m_source = std::move(input);
 }
 
-std::vector<unsigned char *> Bitmap::makeScanlines()
+void Bitmap::poll()
 {
-  std::vector<unsigned char *> scanlines;
-  scanlines.reserve(m_height);
-  const auto rowStride {m_width * 4};
-  for(auto it {m_pixels.begin()}; it < m_pixels.end(); it += rowStride)
-    scanlines.push_back(&*it);
-  return scanlines;
+  if(!m_job || !m_job->ready())
+    return;
+
+  std::shared_ptr<ImageLoader::Job> job {std::move(m_job)};
+  std::lock_guard lock {job->mutex};
+  if(job->error.empty()) {
+    m_pixels = std::move(job->pixels);
+    m_state = Ready;
+  }
+  else {
+    m_error = std::move(job->error);
+    m_state = Failed;
+  }
+}
+
+Image::State Bitmap::state()
+{
+  poll();
+  return m_state;
+}
+
+Image::State Bitmap::wait(const double timeoutSeconds)
+{
+  if(m_job)
+    m_job->wait(timeoutSeconds);
+  return state();
 }
 
 bool Bitmap::heartbeat()
 {
   if(!Resource::heartbeat())
     return false;
+
+  poll();
 
   auto it {m_updates.begin()};
   while(it != m_updates.end()) {
@@ -151,6 +200,32 @@ bool Bitmap::heartbeat()
   return true;
 }
 
+void Bitmap::ensurePixels()
+{
+  if(!m_pixels.empty())
+    return;
+  if(!m_hasSource || m_state != Ready)
+    throw reascript_error {"image pixels are not available"};
+  ImageLoader::decode(m_sourceKind, m_source, m_pixels);
+}
+
+// The CPU copy is only needed until every context's texture has been
+// uploaded. Releasing it halves the memory of a loaded image; a later install
+// on another context (or a backend re-creating the texture) decodes the
+// source again.
+void Bitmap::releasePixels()
+{
+  if(m_keepPixels || !m_hasSource || m_pixels.empty() || !m_updates.empty())
+    return;
+  for(ImTextureData *tex : m_installs->textures) {
+    if(tex->Status != ImTextureStatus_OK)
+      return;
+  }
+  for(ImTextureData *tex : m_installs->textures)
+    tex->Pixels = nullptr;
+  m_pixels.release();
+}
+
 template void Bitmap::copyPixels<false>(int, int, unsigned int, unsigned int,
   reaper_array *, unsigned int, unsigned int);
 template void Bitmap::copyPixels<true>(int, int, unsigned int, unsigned int,
@@ -161,7 +236,11 @@ void Bitmap::copyPixels(int x, int y, unsigned int w, unsigned int h,
   std::conditional_t<Write, const reaper_array*, reaper_array*> pixels,
   unsigned int offset, unsigned int pitch)
 {
-  if(x >= m_width || y >= m_height)
+  if(!ready())
+    throw reascript_error {"image is not ready"};
+
+  const int width {m_pixels.width()}, height {m_pixels.height()};
+  if(x >= width || y >= height)
     return;
 
   if(!pitch)
@@ -178,13 +257,21 @@ void Bitmap::copyPixels(int x, int y, unsigned int w, unsigned int h,
   if(y < 0)
     h += y, offset -= y * pitch, y = 0;
 
-  w = std::min<unsigned int>(w, m_width  - x);
-  h = std::min<unsigned int>(h, m_height - y);
+  w = std::min<unsigned int>(w, width  - x);
+  h = std::min<unsigned int>(h, height - y);
   if(w < 1 || h < 1)
     return;
 
-  const auto outPitch {m_width * 4};
-  auto *out {m_pixels.data() + (x + (y * m_width)) * 4};
+  // scripts that read or write pixels keep them resident from now on
+  ensurePixels();
+  m_keepPixels = true;
+  for(ImTextureData *tex : m_installs->textures) {
+    if(!tex->Pixels)
+      tex->Pixels = m_pixels.data();
+  }
+
+  const auto outPitch {width * 4};
+  auto *out {m_pixels.data() + (x + (y * width)) * 4};
   auto *in {pixels->data + offset};
 
   for(unsigned short iy {}; iy < h; ++iy) {
@@ -202,18 +289,17 @@ void Bitmap::copyPixels(int x, int y, unsigned int w, unsigned int h,
     m_updates.emplace_back(x, y, w, h, ++m_version);
 }
 
-struct ImageTextureData {
-  ImTextureData *tex;
-  unsigned int version;
-};
-
 ImTextureRef Bitmap::texture(Context *ctx)
 {
+  if(!ready())
+    throw reascript_error {"image is not ready"};
   return ctx->touch<ImageTextureData>(this)->tex->GetTexRef();
 }
 
 static void uninstall(Context *, ImageTextureData *data)
 {
+  auto &textures {data->installs->textures};
+  textures.erase(std::find(textures.begin(), textures.end(), data->tex));
   data->tex->Status = ImTextureStatus_WantDestroy;
   data->tex->Pixels = nullptr; // ensure it can't accidentally be used after free
   delete data;
@@ -221,30 +307,43 @@ static void uninstall(Context *, ImageTextureData *data)
 
 SubresourceData Bitmap::install(Context *ctx)
 {
+  ensurePixels();
+
   ImTextureData *tex {ctx->createTexture()};
   tex->UniqueID = uniqId();
   tex->Status = ImTextureStatus_WantCreate;
   tex->Format = ImTextureFormat_RGBA32;
-  tex->Width = m_width;
-  tex->Height = m_height;
+  tex->Width = m_pixels.width();
+  tex->Height = m_pixels.height();
   tex->BytesPerPixel = 4;
   tex->Pixels = m_pixels.data();
   tex->RefCount = 1;
+  m_installs->textures.push_back(tex);
 
-  return {new ImageTextureData {tex, m_version}, &uninstall};
+  return {new ImageTextureData {tex, m_installs, m_version}, &uninstall};
 }
 
 void Bitmap::update(Context *, void *user)
 {
   auto data {static_cast<ImageTextureData *>(user)};
+  ImTextureData *tex {data->tex};
+
+  // a backend re-creating the texture needs the pixels back
+  if(tex->Status == ImTextureStatus_WantCreate && !tex->Pixels) {
+    ensurePixels();
+    tex->Pixels = m_pixels.data();
+  }
+
   const auto prev {std::find_if(m_updates.rbegin(), m_updates.rend(),
     [data](const Update &u) { return u.version == data->version; })};
-  IM_ASSERT(data->tex->Updates.Size == 0);
+  IM_ASSERT(tex->Updates.Size == 0);
   for(auto it = prev.base(); it != m_updates.end(); ++it)
-    data->tex->Updates.push_back(it->rect);
+    tex->Updates.push_back(it->rect);
   data->version = m_version;
-  if(data->tex->Status == ImTextureStatus_OK && data->tex->Updates.Size > 0)
-    data->tex->SetStatus(ImTextureStatus_WantUpdates);
+  if(tex->Status == ImTextureStatus_OK && tex->Updates.Size > 0)
+    tex->SetStatus(ImTextureStatus_WantUpdates);
+
+  releasePixels();
 }
 
 void ImageSet::add(const float scale, Image *img)
@@ -294,6 +393,21 @@ size_t ImageSet::height() const
 ImTextureRef ImageSet::texture(Context *ctx)
 {
   return select().image->texture(ctx);
+}
+
+Image::State ImageSet::state()
+{
+  return select().image->state();
+}
+
+Image::State ImageSet::wait(const double timeoutSeconds)
+{
+  return select().image->wait(timeoutSeconds);
+}
+
+const std::string &ImageSet::error() const
+{
+  return select().image->error();
 }
 
 bool ImageSet::heartbeat()

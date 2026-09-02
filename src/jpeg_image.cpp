@@ -27,11 +27,6 @@
 #include <jpeglib.h>
 #include <jerror.h>
 
-class JPEGImage final : public Bitmap {
-public:
-  JPEGImage(std::istream &);
-};
-
 static bool isJPEG(std::istream &stream)
 {
   constexpr const unsigned char jpeg[] {0xFF, 0xD8, 0xFF};
@@ -40,12 +35,9 @@ static bool isJPEG(std::istream &stream)
   return memcmp(jpeg, magic, sizeof(jpeg)) == 0;
 }
 
-static Image *create(std::istream &stream)
-{
-  return new JPEGImage {stream};
-}
+static void decodeJPEG(std::istream &, PixelBuffer &);
 
-static const Image::RegisterType JPEG {&isJPEG, &create};
+static const Image::RegisterType JPEG {&isJPEG, &decodeJPEG};
 
 static void error(j_common_ptr jpeg)
 {
@@ -108,7 +100,7 @@ void StreamSource::skip(j_decompress_ptr jpeg, long bytes)
   src->bytes_in_buffer -= bytes;
 }
 
-JPEGImage::JPEGImage(std::istream &stream)
+static void decodeJPEG(std::istream &stream, PixelBuffer &pixels)
 {
   struct JPEG {
     ~JPEG() { jpeg_destroy_decompress(&info); }
@@ -129,8 +121,9 @@ JPEGImage::JPEGImage(std::istream &stream)
   jpeg->out_color_space = JCS_EXT_RGBA; // TODO: save memory with RGB textures
   jpeg_start_decompress(jpeg);
 
-  resize(jpeg->output_width, jpeg->output_height, jpeg->output_components);
-  std::vector<unsigned char *> scanlines {makeScanlines()};
+  pixels.resize(jpeg->output_width, jpeg->output_height,
+                jpeg->output_components);
+  std::vector<unsigned char *> scanlines {pixels.makeScanlines()};
 
   // jpeg_read_scanlines does not decompress the entire image at once
   while(jpeg->output_scanline < jpeg->output_height) {

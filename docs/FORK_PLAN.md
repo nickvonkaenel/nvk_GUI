@@ -186,6 +186,16 @@ loss with N contexts on one device; teardown order at REAPER exit.
    *inside* that call. Composite widgets (a few dozen public-API calls) don't
    justify native code; dense draw-heavy ones (10–50k prims, ~1–5ms/frame residual
    tax) do. Drive by profiling, not upfront.
+4b. **Asynchronous image loading (done 2026-09-01).** `CreateImage(file,
+   ImageFlags_Async)` returns at once and decodes on a small worker pool
+   (`src/image_loader.cpp`); `Image_GetState` / `Image_Wait` / `Image_GetError`
+   expose the result, and draw-list image calls on a pending image are no-ops.
+   Decoded pixels of file/memory images are released once every context's
+   texture is uploaded (decoded again on demand), halving per-image memory.
+   Images bypass the short-lived resource guard, and context attachments are
+   a sorted set with a 0x2000 cap (was a linear-scanned vector capped at
+   0x400). Motivation and numbers: nvk_SEARCH Visual FX, see MEASUREMENTS.md.
+
 5. **Cheap hygiene**: monitor enumeration on `WM_DISPLAYCHANGE` only (upstreamable);
    share the monitor list across contexts.
 6. **House defaults**: default style/theme, bundled brand fonts, docker-merge

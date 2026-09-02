@@ -9,6 +9,7 @@ src_sources = files([
   'font_registry.cpp',
   'function.cpp',
   'image.cpp',
+  'image_loader.cpp',
   'jpeg_image.cpp',
   'keymap.cpp',
   'localize.cpp',
@@ -24,7 +25,7 @@ src_sources = files([
 ])
 
 src_args = []
-src_dependencies = [common_dep, libjpeg_dep, libpng_dep, zlib_dep]
+src_dependencies = [common_dep, libjpeg_dep, libpng_dep, zlib_dep, dependency('threads')]
 
 dialog = custom_target('dialog.rc',
   command: [gendialog], capture: true, output: 'dialog.rc')

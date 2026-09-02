@@ -20,12 +20,23 @@
 #include "../src/color.hpp"
 #include "../src/image.hpp"
 
+#include <utility> // forward
+
 #include <reaper_plugin_functions.h>
 
 enum ImageFlags {
-  ReaImGuiImageFlags_None = 0,
+  ReaImGuiImageFlags_None     = 0,
   ReaImGuiImageFlags_NoErrors = 1<<0,
+  ReaImGuiImageFlags_Async    = 1<<1,
 };
+
+template<typename T, typename... Args>
+static T *createImage(Args &&...args)
+{
+  // see Image::fromFile for why images bypass the short-lived resource guard
+  Resource::bypassGCCheckOnce();
+  return new T {std::forward<Args>(args)...};
+}
 
 API_SECTION("Image",
 R"(ReaImGui currently supports loading PNG and JPEG bitmap images.
@@ -65,9 +76,17 @@ API_FUNC(0_9, Image*, CreateImage,
 R"(The returned object is valid as long as it is used in each defer cycle
 unless attached to a context (see Attach).
 
-('flags' currently unused and reserved for future expansion))")
+With ImageFlags_Async the file is decoded on a background thread and the
+function returns at once. Until Image_GetState reports the image as ready,
+Image_GetSize returns 0x0 and the image draws nothing; decoding errors are
+reported through Image_GetState and Image_GetError instead of being raised.
+Image_Wait blocks until the image is ready or a time budget runs out.
+
+Once uploaded to the GPU, the decoded pixels of a file or memory image are
+released to save memory and decoded again only if needed (a new context, or
+after Image_GetPixels_Array/Image_SetPixels_Array, which keep them resident).)")
 try {
-  return Image::fromFile(file);
+  return Image::fromFile(file, API_GET(flags) & ReaImGuiImageFlags_Async);
 }
 catch(const reascript_error &) {
   if(API_GET(flags) & ReaImGuiImageFlags_NoErrors)
@@ -81,7 +100,8 @@ R"(Requires REAPER v6.44 or newer for EEL and Lua. Load from a file using
 CreateImage or explicitely specify data_sz to support older versions.)")
 try {
   // data_sz is inaccurate before REAPER 6.44
-  return Image::fromMemory(data, data_sz);
+  return Image::fromMemory(data, data_sz,
+    API_GET(flags) & ReaImGuiImageFlags_Async);
 }
 catch(const reascript_error &) {
   if(API_GET(flags) & ReaImGuiImageFlags_NoErrors)
@@ -109,7 +129,7 @@ API_FUNC(0_9_2, Image*, CreateImageFromLICE,
 "Copies pixel data from a LICE bitmap created using JS_LICE_CreateBitmap.")
 try {
   assertValid(bitmap);
-  return new LICEBitmap(bitmap);
+  return createImage<LICEBitmap>(bitmap);
 }
 catch(const reascript_error &) {
   if(API_GET(flags) & ReaImGuiImageFlags_NoErrors)
@@ -121,7 +141,7 @@ API_FUNC(0_10, Image*, CreateImageFromSize,
 (int,width) (int,height) (RO<int*>,flags,ReaImGuiImageFlags_None),
 "Create a blank image of the specified dimensions. See Image_SetPixels_Array.")
 try {
-  return new Bitmap {width, height, 4};
+  return createImage<Bitmap>(width, height, 4);
 }
 catch(const reascript_error &) {
   if(API_GET(flags) & ReaImGuiImageFlags_NoErrors)
@@ -131,11 +151,38 @@ catch(const reascript_error &) {
 
 API_FUNC(0_8, void, Image_GetSize, (class Image*,image)
 (W<double*>,w) (W<double*>,h),
-"")
+"Returns 0x0 while an asynchronous image is still decoding.")
 {
   assertValid(image);
   if(w) *w = image->width();
   if(h) *h = image->height();
+}
+
+API_FUNC(0_10, int, Image_GetState, (class Image*,image),
+R"(1 when the image is decoded and drawable, 0 while it is still decoding
+(see ImageFlags_Async), -1 when decoding failed (see Image_GetError).
+Synchronously loaded images are always ready.)")
+{
+  assertValid(image);
+  return image->state();
+}
+
+API_FUNC(0_10, int, Image_Wait, (class Image*,image)
+(RO<double*>,timeout_sec,0.0),
+R"(Blocks until an asynchronous image finishes decoding or timeout_sec elapses,
+then returns its state like Image_GetState. Intended for the first frame after
+a list of images changes: spend one small time budget across the visible set
+so that frame is complete.)")
+{
+  assertValid(image);
+  return image->wait(API_GET(timeout_sec));
+}
+
+API_FUNC(0_10, const char*, Image_GetError, (class Image*,image),
+"The decoding error of a failed asynchronous image, or an empty string.")
+{
+  assertValid(image);
+  return image->error().c_str();
 }
 
 API_FUNC(0_10, void, Image_GetPixels_Array, (Bitmap*,image)
@@ -166,6 +213,11 @@ API_FUNC(0_10, void, Image, (Context*,ctx)
 {
   FRAME_GUARD;
   assertValid(image);
+  if(!image->ready()) {
+    const float border {ImGui::GetStyle().ImageBorderSize * 2};
+    ImGui::Dummy(ImVec2(image_size_w + border, image_size_h + border));
+    return;
+  }
 
   ImGui::Image(image->texture(ctx),
     ImVec2(image_size_w, image_size_h),
@@ -183,6 +235,12 @@ background if specified. Adds StyleVar_FramePadding to provided size.)")
 {
   FRAME_GUARD;
   assertValid(image);
+  if(!image->ready()) {
+    const ImVec2 padding {ImGui::GetStyle().FramePadding};
+    ImGui::Dummy(ImVec2(image_size_w + padding.x * 2,
+                        image_size_h + padding.y * 2));
+    return;
+  }
 
   ImGui::ImageWithBg(image->texture(ctx),
     ImVec2(image_size_w, image_size_h),
@@ -201,6 +259,11 @@ background if specified. Adds StyleVar_FramePadding to provided size.)")
 {
   FRAME_GUARD;
   assertValid(image);
+  if(!image->ready()) {
+    const ImVec2 padding {ImGui::GetStyle().FramePadding};
+    return ImGui::InvisibleButton(str_id,
+      ImVec2(image_size_w + padding.x * 2, image_size_h + padding.y * 2));
+  }
 
   return ImGui::ImageButton(str_id, image->texture(ctx),
     ImVec2(image_size_w, image_size_h),
@@ -229,7 +292,7 @@ Usage:
 API_FUNC(0_9, ImageSet*, CreateImageSet, API_NO_ARGS,
 "")
 {
-  return new ImageSet;
+  return createImage<ImageSet>();
 }
 
 API_FUNC(0_8, void, ImageSet_Add, (ImageSet*,set)
@@ -244,3 +307,5 @@ API_FUNC(0_8, void, ImageSet_Add, (ImageSet*,set)
 API_ENUM_NS(0_10, ReaImGui, ImageFlags_None, "");
 API_ENUM_NS(0_10, ReaImGui, ImageFlags_NoErrors,
   "Return nil instead of returning an error.");
+API_ENUM_NS(0_10, ReaImGui, ImageFlags_Async,
+  "Decode on a background thread. See CreateImage and Image_GetState.");

@@ -207,3 +207,21 @@ and come back.
 width at four so the size check is one modulo and the script side fills the
 array with a flat loop. Kind 0 is a color (val1 packed 0xRRGGBBAA, val2 unused),
 kind 1 a variable (val2 ignored for the scalar ones).
+## 2026-09-01 — asynchronous image loading
+
+Machine as above. Inputs: nvk_SEARCH's FX preview cache (384² PNG tiles,
+~124 KB each) and original screenshots (avg 1464×906). Timings from
+`reaper.time_precise()` in a bench script drawing 200 tiles.
+
+| operation                                   | before (sync)     | after (async)          |
+|---------------------------------------------|-------------------|------------------------|
+| CreateImage + Attach, 200 tiles             | 354 ms (1.8/tile) | 0.2 ms                 |
+| first 30 tiles ready (Image_Wait, 20 ms cap)| n/a               | 7–11 ms                |
+| all 200 tiles ready                         | 50 frames @ 8 ms/frame budget | 4 frames    |
+| 40 originals (6.6 ms each sync)             | 265 ms on main    | 58 ms wall on the pool |
+| 200 tiles uploaded in one render            | ~10 ms            | ~10 ms (unchanged)     |
+
+Memory: RSS grew ~206 MB for 200 resident tiles (115 MB decoded) before,
+because the Bitmap kept its pixel vector next to the GPU texture. With the
+CPU copy released after upload the held delta is the GPU texture alone
+(see the v7 run below for the measured figure).

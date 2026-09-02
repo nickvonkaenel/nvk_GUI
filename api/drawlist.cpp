@@ -396,6 +396,8 @@ API_FUNC(0_8, void, DrawList_AddImage, (DrawListProxy*,draw_list)
   Context *ctx;
   ImDrawList *dl {draw_list->get(&ctx)};
   assertValid(image);
+  if(!image->ready())
+    return; // still decoding or failed (see ImageFlags_Async)
   dl->AddImage(image->texture(ctx),
     ImVec2(p_min_x, p_min_y), ImVec2(p_max_x, p_max_y),
     ImVec2(API_GET(uv_min_x), API_GET(uv_min_y)),
@@ -416,6 +418,8 @@ API_FUNC(0_8, void, DrawList_AddImageQuad, (DrawListProxy*,draw_list)
   Context *ctx;
   ImDrawList *dl {draw_list->get(&ctx)};
   assertValid(image);
+  if(!image->ready())
+    return;
   dl->AddImageQuad(image->texture(ctx),
     ImVec2(p1_x, p1_y), ImVec2(p2_x, p2_y),
     ImVec2(p3_x, p3_y), ImVec2(p4_x, p4_y),
@@ -436,6 +440,8 @@ API_FUNC(0_8, void, DrawList_AddImageRounded, (DrawListProxy*,draw_list)
   Context *ctx;
   ImDrawList *dl {draw_list->get(&ctx)};
   assertValid(image);
+  if(!image->ready())
+    return;
   dl->AddImageRounded(image->texture(ctx),
     ImVec2(p_min_x, p_min_y), ImVec2(p_max_x, p_max_y),
     ImVec2(uv_min_x, uv_min_y), ImVec2(uv_max_x, uv_max_y),
