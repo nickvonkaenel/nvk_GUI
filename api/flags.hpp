@@ -19,6 +19,7 @@
 #define REAIMGUI_FLAGS_HPP
 
 #include "../src/viewport_flags.hpp"
+#include "../src/window_flags.hpp"
 
 #include <imgui/imgui_internal.h> // ImHashStr, internal ImGuiInputTextFlags
 
@@ -50,6 +51,11 @@ class WindowFlags : public Flags<ImGuiWindowFlags> {
 public:
   WindowFlags(int flags) : Flags {flags}
   {
+    // Kept in the flags rather than translated: the docker reads it back off
+    // the window when its host is created
+    if(*this & ReaImGuiWindowFlags_ActivateWithoutFocus)
+      *this |= ImGuiWindowFlags_NoFocusOnAppearing;
+
     if(*this & ReaImGuiWindowFlags_AlwaysOnTop) {
       ImGuiWindowClass alwaysOnTop;
       alwaysOnTop.ClassId = ImHashStr("AlwaysOnTop");

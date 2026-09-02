@@ -47,6 +47,7 @@ public:
   bool isActive() const;
   bool isDropTarget() const;
   bool isNoFocus() const;
+  bool isActivateWithoutFocus() const;
   void moveTo(Docker *other, bool reuseHost = false);
   void hostViewport(ImGuiViewport *);
   void reset();

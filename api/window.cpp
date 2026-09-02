@@ -708,3 +708,8 @@ R"(Keep the window above every application's windows, even while REAPER is in
    the background, and don't bring REAPER to the foreground when clicking on it
    (the window then doesn't take keyboard focus either).
    Implies WindowFlags_TopMost. Has no effect while docked.)");
+API_ENUM_NS(0_10, ReaImGui, WindowFlags_ActivateWithoutFocus,
+R"(Appear without taking keyboard focus, while still making the window visible:
+a floating window is brought to the front and a docked one has its REAPER docker
+tab selected rather than staying behind the active tab.
+Implies WindowFlags_NoFocusOnAppearing.)");

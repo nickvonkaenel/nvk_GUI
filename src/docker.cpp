@@ -21,6 +21,7 @@
 #include "platform.hpp"
 #include "win32_unicode.hpp"
 #include "window.hpp"
+#include "window_flags.hpp"
 
 #include <cassert>
 #include <imgui/imgui.h>
@@ -146,6 +147,13 @@ bool Docker::isNoFocus() const
 {
   return anyNodeWindow(rootNode(), [](ImGuiWindow *window) {
     return (window->Flags & ImGuiWindowFlags_NoFocusOnAppearing) != 0;
+  });
+}
+
+bool Docker::isActivateWithoutFocus() const
+{
+  return anyNodeWindow(rootNode(), [](ImGuiWindow *window) {
+    return (window->Flags & ReaImGuiWindowFlags_ActivateWithoutFocus) != 0;
   });
 }
 
@@ -444,6 +452,10 @@ void DockerHost::create()
   // docked windows, but would from the Begin in Docker::draw
   if(!m_docker->isNoFocus())
     DockWindowActivate2(hwnd);
+  // Select the tab so the window is actually on screen, but leave the keyboard
+  // focus where the user had it (no SetFocus, unlike DockWindowActivate2)
+  else if(m_docker->isActivateWithoutFocus())
+    DockWindowActivate(hwnd);
 }
 
 void DockerHost::show()
