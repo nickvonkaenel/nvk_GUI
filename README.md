@@ -9,12 +9,13 @@ its own names. Stock ReaImGui keeps serving third-party scripts; our
 scripts depend on this fork. Requires REAPER 7.28+.
 
 This repository is developed in place as the `vendor/nvk_GUI` submodule of
-nvk_API (`~/repos/nvk_API/vendor/nvk_GUI`); that is the only working copy.
-A second clone drifts behind and swallows changes patched into it, so
-`~/repos/reaimgui` is a symlink here. Commit here, push, then bump the
-submodule pointer in nvk_API. The Dear ImGui patches this fork needs live on
-the `nvk-patches` branch of `https://github.com/nickvonkaenel/imgui`; keep them
-on that branch and pushed, or `git submodule update` will strand them.
+nvk_API (`~/repos/nvk_API/vendor/nvk_GUI`), and that is deliberately the only
+working copy: the standalone clone that used to sit beside it drifted four
+commits behind and swallowed a change patched into it. Commit here, push, then
+bump the submodule pointer in nvk_API. The Dear ImGui patches this fork needs
+live on the `nvk-patches` branch of `https://github.com/nickvonkaenel/imgui`;
+keep them on that branch and pushed, or `git submodule update` will strand
+them.
 
 Branch layout:
 - `main` — the fork: upstream + our patch series (rebrand first, then
