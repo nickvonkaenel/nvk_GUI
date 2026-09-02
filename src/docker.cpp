@@ -90,6 +90,30 @@ static bool anyNodeWindow(const ImGuiDockNode *node,
          anyNodeWindow(node->ChildNodes[1], callback);
 }
 
+static void collectNodeWindows(const ImGuiDockNode *node,
+  ImVector<ImGuiWindow *> &windows)
+{
+  if(!node || node->IsEmpty())
+    return;
+
+  for(int i {}; i < node->Windows.Size; ++i)
+    windows.push_back(node->Windows[i]);
+
+  collectNodeWindows(node->ChildNodes[0], windows);
+  collectNodeWindows(node->ChildNodes[1], windows);
+}
+
+// Dock the given node's windows into an already occupied dock space
+// (tabs into its central or last focused node). Their split arrangement is
+// not preserved: REAPER's docker tabs merge the same way.
+static void mergeNodeWindows(const ImGuiDockNode *node, const ImGuiID targetId)
+{
+  ImVector<ImGuiWindow *> windows;
+  collectNodeWindows(node, windows); // SetWindowDock mutates node->Windows
+  for(ImGuiWindow *window : windows)
+    ImGui::SetWindowDock(window, targetId, ImGuiCond_Always);
+}
+
 void Docker::update(bool deactivate)
 {
   const ImGuiContext *ctx {ImGui::GetCurrentContext()};
@@ -130,7 +154,10 @@ void Docker::moveTo(Docker *target, const bool reuseHost)
   assert(target && target != this);
 
   if(target->isActive()) {
-    reset(); // undock all contained windows
+    // The target docker is already in use: join its existing layout
+    // instead of undocking all contained windows.
+    mergeNodeWindows(rootNode(), target->nodeId());
+    reset();
     return;
   }
 
@@ -144,15 +171,15 @@ void Docker::moveTo(Docker *target, const bool reuseHost)
 
 void Docker::hostViewport(ImGuiViewport *viewport)
 {
-  assert(!isActive());
-
   ImGuiWindow *window {static_cast<ImGuiViewportP *>(viewport)->Window};
-  if(window->DockNodeAsHost) {
+  if(!window->DockNodeAsHost)
+    ImGui::SetWindowDock(window, nodeId(), ImGuiCond_Always);
+  else if(isActive()) // copying would clobber the existing layout
+    mergeNodeWindows(window->DockNodeAsHost, nodeId());
+  else {
     ImVector<const char *> remap;
     ImGui::DockBuilderCopyDockSpace(window->DockNodeAsHost->ID, nodeId(), &remap);
   }
-  else
-    ImGui::SetWindowDock(window, nodeId(), ImGuiCond_Always);
 }
 
 void Docker::reset()

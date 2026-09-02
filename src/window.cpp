@@ -441,8 +441,6 @@ void Window::contextMenu(const short x, const short y)
       int cmd {NoOp}, flags {};
       if(currentDockId == id)
         flags |= Menu::Checked | Menu::Radio;
-      else if(m_ctx->dockers().findById(id)->isActive())
-        flags |= Menu::Disabled;
       else
         cmd = SetDock + id;
 
