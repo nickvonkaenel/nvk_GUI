@@ -22,6 +22,7 @@
 #include "helper.hpp"
 
 #include "../src/api_eel.hpp"
+#include "../src/viewport.hpp"
 
 #include <imgui/imgui.h>
 
@@ -365,6 +366,24 @@ Prefer using SetNextWindowFocus.)")
 {
   FRAME_GUARD;
   ImGui::SetWindowFocus();
+}
+
+API_FUNC(0_10, void, ActivateWindow, (Context*,ctx),
+R"(Bring the current window's platform window forward: select its tab when it is
+docked in a REAPER docker, or raise and focus it when it is floating. Call
+between Begin and End.
+
+Dear ImGui's focus functions only reorder windows within the context (it asks
+the platform for focus on its own only while CTRL+Tabbing), so this is what
+brings an already-open window back to the user, such as when the script's action
+is run a second time.)")
+{
+  FRAME_GUARD;
+  ImGuiWindow *window {ImGui::GetCurrentWindowRead()};
+  if(!window || !window->Viewport)
+    return;
+  if(void *userData {window->Viewport->PlatformUserData})
+    static_cast<Viewport *>(userData)->setFocus();
 }
 
 API_FUNC(0_5, void, SetWindowPosEx, (Context*,ctx)
