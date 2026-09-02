@@ -334,16 +334,23 @@ void Bitmap::update(Context *, void *user)
     tex->Pixels = m_pixels.data();
   }
 
+  queueTextureUpdates(tex, data->version);
+  releasePixels();
+}
+
+void Bitmap::queueTextureUpdates(ImTextureData *tex, unsigned int &version)
+{
+  // The backend consumes tex->Updates only while rendering a viewport. A
+  // frame in which none of the context's viewports is visible (its docked tab
+  // hidden behind another tab, a minimized window) renders nothing, so the
+  // rectangles queued last frame are still pending: keep them and append.
   const auto prev {std::find_if(m_updates.rbegin(), m_updates.rend(),
-    [data](const Update &u) { return u.version == data->version; })};
-  IM_ASSERT(tex->Updates.Size == 0);
+    [version](const Update &u) { return u.version == version; })};
   for(auto it = prev.base(); it != m_updates.end(); ++it)
     tex->Updates.push_back(it->rect);
-  data->version = m_version;
+  version = m_version;
   if(tex->Status == ImTextureStatus_OK && tex->Updates.Size > 0)
     tex->SetStatus(ImTextureStatus_WantUpdates);
-
-  releasePixels();
 }
 
 void ImageSet::add(const float scale, Image *img)

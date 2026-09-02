@@ -81,6 +81,10 @@ public:
   SubresourceData install(Context *) override;
   void update(Context *, void *) override;
 
+  // Queues the pixel writes made since `version` on the texture, on top of
+  // rectangles a frame without a rendered viewport left unconsumed.
+  void queueTextureUpdates(ImTextureData *, unsigned int &version);
+
   template<bool Write>
   void copyPixels(int x, int y,
     unsigned int w, unsigned int h,

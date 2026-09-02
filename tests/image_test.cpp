@@ -19,7 +19,9 @@
 #include "../src/image.hpp"
 
 #include <gtest/gtest.h>
+#include <imgui/imgui.h>
 #include <memory>
+#include <reaper_plugin.h>
 
 // 2x3 RGBA8 PNG, pixel (x, y) = {y*40, x*90, 7, 255}
 static const unsigned char PNG_2x3[] {
@@ -109,4 +111,38 @@ TEST(ImageTest, ImagesBypassGCGuard) {
   }
   std::unique_ptr<Image> image {Image::fromMemory(pngData(), sizeof(PNG_2x3))};
   EXPECT_TRUE(image->ready());
+}
+
+// Bitmap::queueTextureUpdates runs once per frame from Context::endFrame. The
+// backend consumes tex->Updates only while rendering a viewport, so a frame
+// whose viewports were all hidden (a docked tab covered by another tab) leaves
+// them pending; the next frame's writes must accumulate, not assert.
+TEST(ImageTest, TextureUpdatesSurviveSkippedRender) {
+  auto bitmap {std::make_unique<Bitmap>(2, 2, 4)};
+  ImTextureData tex;
+  tex.Status = ImTextureStatus_OK; // already uploaded by the backend
+  unsigned int version {};
+
+  struct { unsigned int size, alloc; double data[1]; } pixel {1, 1, {0xff0000ffp0}};
+  auto pixels {reinterpret_cast<const reaper_array *>(&pixel)};
+
+  bitmap->copyPixels<true>(0, 0, 1, 1, pixels);
+  bitmap->queueTextureUpdates(&tex, version);
+  ASSERT_EQ(tex.Updates.Size, 1);
+  EXPECT_EQ(tex.Status, ImTextureStatus_WantUpdates);
+
+  // no viewport rendered this frame: the rectangle was not consumed
+  bitmap->copyPixels<true>(1, 1, 1, 1, pixels);
+  ASSERT_NO_THROW(bitmap->queueTextureUpdates(&tex, version));
+  ASSERT_EQ(tex.Updates.Size, 2);
+  EXPECT_EQ(tex.Updates[0].x, 0);
+  EXPECT_EQ(tex.Updates[1].x, 1);
+  EXPECT_EQ(tex.Status, ImTextureStatus_WantUpdates);
+
+  // a visible frame: the backend uploaded both and cleanupTextures cleared them
+  tex.SetStatus(ImTextureStatus_OK);
+  tex.Updates.resize(0);
+  bitmap->queueTextureUpdates(&tex, version);
+  EXPECT_EQ(tex.Updates.Size, 0);
+  EXPECT_EQ(tex.Status, ImTextureStatus_OK);
 }
