@@ -23,6 +23,7 @@
 
 #include "../src/api_eel.hpp"
 #include "../src/viewport.hpp"
+#include "../src/window.hpp"
 
 #include <imgui/imgui.h>
 
@@ -384,6 +385,29 @@ is run a second time.)")
     return;
   if(void *userData {window->Viewport->PlatformUserData})
     static_cast<Viewport *>(userData)->setFocus();
+}
+
+API_FUNC(0_10, bool, StartWindowMove, (Context*,ctx),
+R"(Hand the left-button drag in progress over to the operating system, which
+moves the current window's platform window along with the pointer until the
+button is released, the way dragging a title bar does. Call between Begin and
+End once the drag has been recognized (see IsMouseDragging); the window then
+tracks the pointer at the platform's own rate rather than once per script frame.
+
+The button is released on Dear ImGui's side at the same time: the item under the
+pointer stops tracking the drag and IsMouseDown reports false from the next
+frame on. Returns false, leaving the drag untouched, when the left button is not
+down on this window, the window is docked, or the platform cannot take over (a
+script may then move the window itself with SetWindowPos).)")
+{
+  FRAME_GUARD;
+  ImGuiWindow *window {ImGui::GetCurrentWindowRead()};
+  if(!window || !window->Viewport)
+    return false;
+  // DockerHost is the user data of a docked viewport and is not a Window
+  auto *viewport {static_cast<Viewport *>(window->Viewport->PlatformUserData)};
+  Window *platformWindow {dynamic_cast<Window *>(viewport)};
+  return platformWindow && platformWindow->startMove();
 }
 
 API_FUNC(0_5, void, SetWindowPosEx, (Context*,ctx)

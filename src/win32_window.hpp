@@ -42,6 +42,7 @@ public:
 
   std::optional<LRESULT> handleMessage
     (const unsigned int msg, WPARAM wParam, LPARAM) override;
+  bool platformStartMove() override;
 
 private:
   struct Class {

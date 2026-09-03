@@ -173,10 +173,18 @@ void CocoaWindow::setPosition(ImVec2 pos)
 
 void CocoaWindow::setSize(const ImVec2 size)
 {
-  // most scripts expect y=0 to be the top of the window
+  // most scripts expect y=0 to be the top of the window, while Cocoa grows a
+  // window from its bottom-left corner: put the top-left corner back where it
+  // was. Measured from the window itself rather than reapplied from
+  // m_viewport->Pos, which is a frame behind while the operating system is
+  // moving the window (see StartWindowMove) and would drag it back under
+  // the pointer at every resize.
   NSWindow *window {[m_view window]};
+  const NSRect frame {[window frame]};
+  const NSPoint topLeft
+    {NSMakePoint(frame.origin.x, frame.origin.y + frame.size.height)};
   [window setContentSize:NSMakeSize(size.x, size.y)];
-  setPosition(m_viewport->Pos); // preserve y position from the top
+  [window setFrameTopLeftPoint:topLeft];
 }
 
 void CocoaWindow::setFocus()
@@ -348,6 +356,20 @@ int CocoaWindow::handleAccelerator(MSG *msg)
 {
   [[m_view window] sendEvent:[NSApp currentEvent]];
   return Accel::EatKeystroke;
+}
+
+bool CocoaWindow::platformStartMove()
+{
+  // performWindowDragWithEvent: wants the mouse event the drag continues
+  // from, and the script asks from a timer callback with no event in flight.
+  // The input view fulfills the request from its next mouseDragged event,
+  // which is milliseconds away while the user is moving the mouse.
+  if(@available(macOS 10.11, *)) {
+    mouseUp(ImGuiMouseButton_Left);
+    [m_inputView requestWindowDrag];
+    return true;
+  }
+  return false;
 }
 
 void Window::updateModifiers()

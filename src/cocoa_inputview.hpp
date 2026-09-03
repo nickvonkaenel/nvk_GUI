@@ -29,10 +29,13 @@ class Window;
   NSMutableAttributedString *m_markedText;
   Window *m_window;
   NSPoint m_imePos;
+  BOOL m_windowDragRequested;
 }
 
 - (instancetype)initWithWindow:(Window *)window;
 - (void)setImePosition:(NSPoint)pos;
+// Hand the left-button drag over to AppKit on the next mouseDragged event
+- (void)requestWindowDrag;
 
 - (BOOL)acceptsFirstResponder;
 - (BOOL)resignFirstResponder;
@@ -40,6 +43,8 @@ class Window;
 - (BOOL)acceptsFirstMouse:(NSEvent *)event;
 - (BOOL)shouldDelayWindowOrderingForEvent:(NSEvent *)event;
 - (void)mouseDown:(NSEvent *)event;
+- (void)mouseDragged:(NSEvent *)event;
+- (void)mouseUp:(NSEvent *)event;
 - (void)rightMouseDown:(NSEvent *)event;
 - (void)otherMouseDown:(NSEvent *)event;
 

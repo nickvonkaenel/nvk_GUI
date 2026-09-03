@@ -455,6 +455,20 @@ std::optional<LRESULT> Win32Window::handleMessage
   return std::nullopt;
 }
 
+bool Win32Window::platformStartMove()
+{
+  // DefWindowProc's move loop only starts with the mouse uncaptured, which
+  // releasing the button on our side does. The message is posted rather than
+  // sent so that the loop runs from REAPER's message pump once the script's
+  // callback has returned, instead of nested inside the API call for the
+  // whole drag. Timers (and so the script) keep running inside that loop.
+  mouseUp(ImGuiMouseButton_Left);
+  POINT pos;
+  GetCursorPos(&pos);
+  PostMessage(m_hwnd, WM_NCLBUTTONDOWN, HTCAPTION, MAKELPARAM(pos.x, pos.y));
+  return true;
+}
+
 static bool IsVkDown(const int vk)
 {
   return (GetAsyncKeyState(vk) & 0x8000) != 0;

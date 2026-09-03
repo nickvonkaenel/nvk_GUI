@@ -288,6 +288,13 @@ void Window::mouseUp(const ImGuiMouseButton btn)
   }
 }
 
+bool Window::startMove()
+{
+  if(isDocked() || !(m_mouseDown & (1 << ImGuiMouseButton_Left)))
+    return false;
+  return platformStartMove();
+}
+
 void Window::releaseMouse()
 {
   // Caller is responsible of clearing buttons on imgui's side (ClearInputKeys)

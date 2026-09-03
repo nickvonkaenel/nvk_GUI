@@ -273,6 +273,18 @@ static ImGuiMouseButton translateButton(const GdkEventButton *event)
   }
 }
 
+bool GDKWindow::platformStartMove()
+{
+  GdkWindow *window {getOSWindow()};
+  if(!window)
+    return false;
+
+  mouseUp(ImGuiMouseButton_Left);
+  const ImVec2 pos {Platform::getCursorPos()}; // root coordinates
+  gdk_window_begin_move_drag(window, 1, pos.x, pos.y, GDK_CURRENT_TIME);
+  return true;
+}
+
 std::optional<LRESULT> GDKWindow::handleMessage
   (const unsigned int msg, WPARAM wParam, LPARAM lParam)
 {

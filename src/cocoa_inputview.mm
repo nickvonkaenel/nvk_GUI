@@ -187,6 +187,11 @@ static int translateKeyCode(NSEvent *event)
   m_imePos = pos;
 }
 
+- (void)requestWindowDrag
+{
+  m_windowDragRequested = YES;
+}
+
 - (BOOL)acceptsFirstResponder
 {
   // Make ourselves first responder again when regaining focus while docked
@@ -225,9 +230,30 @@ static int translateKeyCode(NSEvent *event)
 // Susequent events (eg. mouse up) are handled via [EventHandler appMouseEvent]
 - (void)mouseDown:(NSEvent *)event
 {
+  m_windowDragRequested = NO;
   if(m_window->viewport()->Flags & ImGuiViewportFlags_NoFocusOnClick)
     [NSApp preventWindowOrdering];
   m_window->mouseDown(ImGuiMouseButton_Left);
+}
+
+// Drag events keep coming to the view that got the mouseDown, whether or not
+// the mouse is captured on our side
+- (void)mouseDragged:(NSEvent *)event
+{
+  if(!m_windowDragRequested)
+    return;
+  m_windowDragRequested = NO;
+
+  // The window server tracks the pointer from here until the button is
+  // released, so the window follows it without waiting for a script frame.
+  if(@available(macOS 10.11, *))
+    [[self window] performWindowDragWithEvent:event];
+}
+
+- (void)mouseUp:(NSEvent *)event
+{
+  // The button was released before the next drag event arrived
+  m_windowDragRequested = NO;
 }
 
 - (void)rightMouseDown:(NSEvent *)event

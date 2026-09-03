@@ -64,6 +64,12 @@ public:
   void releaseMouse();
   bool isDocked() const { return !!m_dockerHost; }
 
+  // Hands the left-button drag in progress over to the operating system's own
+  // window-move tracking, the way dragging a title bar does. Returns false and
+  // leaves the drag alone when the button was not pressed on this window, the
+  // window is docked, or the platform cannot take over.
+  bool startMove();
+
   // m_viewport->Flags plus the always-on-top state inherited from the
   // viewports this one was opened from (popups, menus and tooltips)
   ImGuiViewportFlags effectiveFlags() const;
@@ -79,6 +85,14 @@ protected:
 
   virtual std::optional<LRESULT> handleMessage(unsigned int msg, WPARAM, LPARAM) = 0;
   virtual int handleAccelerator(MSG *);
+
+  // Called by startMove with the left button down on this window. Once the
+  // takeover is certain, the implementation must call mouseUp(Left) before
+  // handing the pointer over: the platform keeps the release for itself, and
+  // ImGui's item under the pointer (a text field, typically) has to stop
+  // tracking the drag. Returns false, without releasing anything, when the
+  // platform cannot take over.
+  virtual bool platformStartMove() = 0;
 
   HWND m_hwnd;
   std::unique_ptr<Renderer> m_renderer;
