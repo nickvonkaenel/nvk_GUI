@@ -52,6 +52,10 @@ jobs:
       - name: Test
         run: meson test -vC build nvkgui
 
+      - name: Window context regression
+        shell: pwsh
+        run: ./tests/window_effective_flags.ps1
+
       - name: Rebrand check
         shell: bash
         run: ./tools/rebrand_check.sh

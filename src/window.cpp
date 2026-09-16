@@ -384,7 +384,15 @@ ImGuiViewportFlags Window::effectiveFlags() const
   // other applications along with their always-on-top parent.
   ImGuiID parentId {m_viewport->ParentViewportId};
   for(int depth {}; parentId && depth < 16; ++depth) {
-    const ImGuiViewport *parent {ImGui::FindViewportByID(parentId)};
+    // Native messages (including EnableWindow's synchronous WM_ENABLE) can
+    // arrive outside a frame, with no current context or another window's.
+    const ImGuiViewport *parent {};
+    for(const ImGuiViewport *candidate : m_ctx->imgui()->Viewports) {
+      if(candidate->ID == parentId) {
+        parent = candidate;
+        break;
+      }
+    }
     if(!parent || parent == m_viewport)
       break;
     if(parent->Flags & ReaImGuiViewportFlags_AlwaysOnTop) {
