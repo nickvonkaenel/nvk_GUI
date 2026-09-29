@@ -56,6 +56,10 @@ jobs:
         shell: pwsh
         run: ./tests/window_effective_flags.ps1
 
+      - name: Stale drag regression
+        shell: pwsh
+        run: ./tests/drag_sources_stale_drag.ps1
+
       - name: Rebrand check
         shell: bash
         run: ./tools/rebrand_check.sh

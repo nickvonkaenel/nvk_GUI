@@ -570,6 +570,22 @@ void Context::updateDragDrop()
     m_stateFlags |= DnD_WasActive;
 }
 
+// While files from the operating system are over our window, the OS owns the
+// mouse, so any other drag still active is one the script left behind when it
+// handed its own drag to the OS (and got the files dropped back on itself).
+// Dear ImGui would continue that drag and keep the flags it began with instead
+// of ours: with SourceNoPreviewTooltip among them, EndDragDropSource skips the
+// EndTooltip matching our BeginDragDropSource and the frame ends with
+// "Missing End()". Start ours from a clean state instead.
+static void releaseStaleDrag()
+{
+  if(!ImGui::IsDragDropActive())
+    return;
+  const ImGuiPayload *payload {ImGui::GetDragDropPayload()};
+  if(!payload || !payload->IsDataType(REAIMGUI_PAYLOAD_TYPE_FILES))
+    ImGui::ClearDragDrop();
+}
+
 void Context::dragSources()
 {
   constexpr ImGuiDragDropFlags flags
@@ -585,6 +601,7 @@ void Context::dragSources()
       !ImGui::IsMouseReleased(DND_MouseButton))
     return;
 
+  releaseStaleDrag();
   if(!ImGui::BeginDragDropSource(flags))
     return;
 
