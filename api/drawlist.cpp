@@ -22,6 +22,8 @@
 #include "../src/font.hpp"
 #include "../src/image.hpp"
 
+#include <cmath>
+#include <imgui/imgui_internal.h> // ShadeVertsTransformPos
 #include <vector>
 
 API_SECTION("Draw List",
@@ -302,6 +304,40 @@ cpu_fine_clip_rect_* only takes effect if all four are non-nil.)")
 
   dl->AddText(imfont, font_size, ImVec2(pos_x, pos_y), col_rgba,
     text, nullptr, API_GET(wrap_width), cpu_fine_clip_rect_ptr);
+}
+
+API_FUNC(0_10, void, DrawList_AddTextRotated, (DrawListProxy*,draw_list)
+(double,x) (double,y) (int,col_rgba) (const char*,text) (double,angle),
+R"(Draw text in the current font turned by angle radians around its top-left
+corner at x, y. Positive angles turn clockwise on screen, as in
+DrawList_PathArcTo: -pi/2 reads from bottom to top with the top of the line
+facing left, and pi/2 reads from top to bottom. The current clip rectangle clips
+the text where it lands once turned. Quarter turns from a whole-pixel x, y stay
+on the pixel grid.)")
+{
+  col_rgba = Color::fromBigEndian(col_rgba);
+  if(!(col_rgba & IM_COL32_A_MASK))
+    return;
+
+  ImDrawList *dl {draw_list->get()};
+  const ImVec2 pivot(x, y);
+  const int vtxBegin {dl->VtxBuffer.Size};
+  // The glyphs are laid out unturned and reach their place only once rotated,
+  // so culling them here against the clip rectangle would drop the wrong ones.
+  // The draw command keeps that rectangle, which clips the turned text.
+  dl->_Data->Font->RenderText(dl, dl->_Data->FontSize, pivot, col_rgba,
+    ImVec4(-FLT_MAX, -FLT_MAX, FLT_MAX, FLT_MAX), text, nullptr);
+
+  // Exact quarter turns keep every glyph quad axis-aligned.
+  const auto snap {[](const double v) {
+    if(std::abs(v) < 1e-6)
+      return 0.f;
+    if(std::abs(std::abs(v) - 1.0) < 1e-6)
+      return v < 0 ? -1.f : 1.f;
+    return static_cast<float>(v);
+  }};
+  ImGui::ShadeVertsTransformPos(dl, vtxBegin, dl->VtxBuffer.Size, pivot,
+    snap(std::cos(angle)), snap(std::sin(angle)), pivot);
 }
 
 API_FUNC(0_10, void, DrawList_SetTextPixelSnap, (DrawListProxy*,draw_list)
