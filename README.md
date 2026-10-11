@@ -3,7 +3,9 @@
 A renamed fork of [ReaImGui](https://codeberg.org/cfillion/reaimgui) that
 **coexists** with the stock extension: it registers its API as
 `NvkGui_*`, ships as `reaper_nvkgui`, installs its Lua wrapper as
-`Scripts/nvk/API/nvkgui.lua`, and keeps all of its on-disk and registered
+`Scripts/nvk/API/nvkgui.lua` (a development build) or
+`Scripts/nvk-ReaScripts/Extensions/nvkgui.lua` (the nvk_API ReaPack package),
+and keeps all of its on-disk and registered
 state (ini files, screensets, action IDs, prefs page, ObjC classes) under
 its own names. Stock ReaImGui keeps serving third-party scripts; our
 scripts depend on this fork. Requires REAPER 7.28+.
@@ -31,8 +33,9 @@ Branch layout:
 
 Upstream ReaImGui lives at <https://codeberg.org/cfillion/reaimgui>: issues,
 releases and the ReaPack distribution of the stock extension belong there, not
-here. This fork is not distributed at all — it is built from source and
-installed by nvk_API's `build.sh`.
+here. This fork is distributed only inside the nvk_API ReaPack package, which
+installs it beside nvk_API; development builds are installed by nvk_API's
+`build.sh`.
 
 Licensed under the LGPL v3 or later, like upstream (see COPYING.LESSER).
 

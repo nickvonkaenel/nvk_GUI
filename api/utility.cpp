@@ -28,8 +28,10 @@
 #include "../src/function.hpp"
 #include "../src/image.hpp"
 #include "../src/platform.hpp"
+#include "../src/win32_unicode.hpp"
 
 #include <climits>
+#include <filesystem>
 #include <reaper_plugin_functions.h>
 #include <WDL/wdltypes.h> // WDL_DIRCHAR_STR
 
@@ -105,13 +107,21 @@ written against stock validate unchanged.)")
 #undef RESOURCEPROXY_ISVALID
 
 API_FUNC(0_9, const char*, GetBuiltinPath, API_NO_ARGS,
-"Returns the path to the directory containing nvkgui.lua and nvkgui.py.")
+R"(Returns the path to the directory containing nvkgui.lua: Scripts/nvk/API when a development build installed it there, otherwise Scripts/nvk-ReaScripts/Extensions, where the nvk_API ReaPack package installs it.)")
 {
-  static const std::string output {
-    std::string {GetResourcePath()} +
-    WDL_DIRCHAR_STR "Scripts" WDL_DIRCHAR_STR "nvk"
-    WDL_DIRCHAR_STR "API"
-  };
+  // A development build's Meson install writes the wrapper to Scripts/nvk/API.
+  // ReaPack can only write scripts inside the installing repository's folder,
+  // so the nvk_API package puts it in nvk-ReaScripts' Extensions category.
+  static const std::string output {[] {
+    const std::string scripts {std::string {GetResourcePath()} +
+      WDL_DIRCHAR_STR "Scripts" WDL_DIRCHAR_STR};
+    const std::string development {scripts + "nvk" WDL_DIRCHAR_STR "API"};
+    std::error_code ec;
+    if(std::filesystem::exists(
+        std::filesystem::path {widen(development)} / "nvkgui.lua", ec))
+      return development;
+    return scripts + "nvk-ReaScripts" WDL_DIRCHAR_STR "Extensions";
+  }()};
 
   return output.c_str();
 }
