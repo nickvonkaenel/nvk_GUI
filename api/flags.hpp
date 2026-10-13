@@ -60,7 +60,8 @@ public:
       ImGuiWindowClass alwaysOnTop;
       alwaysOnTop.ClassId = ImHashStr("AlwaysOnTop");
       alwaysOnTop.ViewportFlagsOverrideSet =
-        ImGuiViewportFlags_TopMost | ReaImGuiViewportFlags_AlwaysOnTop;
+        static_cast<ImGuiViewportFlags>(ImGuiViewportFlags_TopMost) |
+        static_cast<ImGuiViewportFlags>(ReaImGuiViewportFlags_AlwaysOnTop);
       // the flag is meaningless while docked, don't prevent docking
       alwaysOnTop.DockingAllowUnclassed = true;
       ImGui::SetNextWindowClass(&alwaysOnTop);
