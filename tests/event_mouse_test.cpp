@@ -44,7 +44,7 @@ protected:
   }
 
   ImGuiContext *ctx {};
-  EventMouseInput input;
+  EventMouseInput input {true};
   ImVec2 cursor {600, 400}, button {};
   bool hovered {};
 };
@@ -77,7 +77,19 @@ TEST_F(EventMouseTest, HeldTargetedClickKeepsPositionUntilRelease)
   EXPECT_FALSE(hovered);
 }
 
-TEST_F(EventMouseTest, PhysicalClickStillActivates)
+class NormalMouseTest : public EventMouseTest,
+  public testing::WithParamInterface<bool> {
+protected:
+  void SetUp() override
+  {
+    input = EventMouseInput {GetParam()};
+    EventMouseTest::SetUp();
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(AutomationInput, NormalMouseTest, testing::Bool());
+
+TEST_P(NormalMouseTest, PhysicalClickStillActivates)
 {
   cursor = button;
   frame();
@@ -89,7 +101,7 @@ TEST_F(EventMouseTest, PhysicalClickStillActivates)
   EXPECT_TRUE(hovered);
 }
 
-TEST_F(EventMouseTest, RealMovementDuringDragResumesPolling)
+TEST_P(NormalMouseTest, RealMovementDuringDragResumesPolling)
 {
   cursor = button;
   event(true, cursor);
@@ -125,7 +137,7 @@ TEST_F(EventMouseTest, ConsecutiveClicksRemainOrdered)
   EXPECT_FALSE(hovered);
 }
 
-TEST_F(EventMouseTest, FocusResetAllowsPhysicalPolling)
+TEST_P(NormalMouseTest, FocusResetAllowsPhysicalPolling)
 {
   event(true, button);
   frame();
@@ -136,4 +148,22 @@ TEST_F(EventMouseTest, FocusResetAllowsPhysicalPolling)
   EXPECT_FALSE(ctx->IO.MouseDown[0]);
   EXPECT_FALSE(hovered);
   EXPECT_EQ(ctx->IO.MousePos.x, cursor.x);
+}
+
+TEST_F(EventMouseTest, DefaultOffIgnoresEventCoordinates)
+{
+  input = EventMouseInput {};
+  EXPECT_FALSE(input.enabled());
+  const int queued {ctx->InputEventsQueue.Size};
+  input.position(ctx, ImGui::GetMainViewport()->ID, button, cursor);
+  EXPECT_EQ(ctx->InputEventsQueue.Size, queued);
+  EXPECT_TRUE(input.shouldPoll(ctx, cursor));
+
+  event(true, button);
+  EXPECT_FALSE(frame());
+  EXPECT_FALSE(hovered);
+  event(false, button);
+  EXPECT_FALSE(frame());
+  EXPECT_EQ(ctx->IO.MousePos.x, cursor.x);
+  EXPECT_EQ(ctx->IO.MousePos.y, cursor.y);
 }

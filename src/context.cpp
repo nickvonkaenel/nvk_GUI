@@ -111,7 +111,11 @@ void Context::clearCurrent()
 }
 
 Context::Context(const char *label, const int userConfigFlags)
-  : m_id {ImHashStr(label)}, m_stateFlags {}, m_cursor {}, m_frameCallback {},
+  : m_id {ImHashStr(label)},
+#ifdef __APPLE__
+    m_eventMouse {Settings::DevAutomationInput},
+#endif
+    m_stateFlags {}, m_cursor {}, m_frameCallback {},
     m_lastFrame       {decltype(m_lastFrame)::clock::now()               },
     m_name            {label, ImGui::FindRenderedTextEnd(label)          },
     m_iniFilename     {generateIniFilename(m_id)                         },
@@ -472,7 +476,8 @@ void Context::updateMouseData()
 #ifdef __APPLE__
 void Context::mousePosition(ImGuiViewport *viewport, ImVec2 nativePosition)
 {
-  if(!m_draggedFiles.empty() || m_stateFlags & DnD_Cancelled)
+  if(!m_eventMouse.enabled() || !m_draggedFiles.empty() ||
+      m_stateFlags & DnD_Cancelled)
     return;
 
   const ImVec2 cursor {Platform::getCursorPos()};

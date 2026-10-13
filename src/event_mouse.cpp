@@ -5,6 +5,9 @@
 void EventMouseInput::position(ImGuiContext *ctx, const ImGuiID viewport,
   const ImVec2 position, const ImVec2 cursor)
 {
+  if(!m_enabled)
+    return;
+
   m_cursor = cursor;
   m_pending = true;
   ctx->IO.AddMouseViewportEvent(viewport);
@@ -13,7 +16,7 @@ void EventMouseInput::position(ImGuiContext *ctx, const ImGuiID viewport,
 
 bool EventMouseInput::shouldPoll(const ImGuiContext *ctx, const ImVec2 cursor)
 {
-  if(!m_pending)
+  if(!m_enabled || !m_pending)
     return true;
 
   if(cursor.x == m_cursor.x && cursor.y == m_cursor.y) {

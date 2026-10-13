@@ -39,6 +39,10 @@ namespace Settings {
                NavCaptureKbd, NavCurAlways, NavMoveMouse;
   SETTING const RendererType *Renderer;
   SETTING bool ForceSoftware;
+#ifdef __APPLE__
+  // Hidden local opt-in, read once at extension startup.
+  SETTING bool DevAutomationInput;
+#endif
 }
 
 #undef SETTING

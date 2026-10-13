@@ -39,6 +39,28 @@ installs it beside nvk_API; development builds are installed by nvk_API's
 
 Licensed under the LGPL v3 or later, like upstream (see COPYING.LESSER).
 
+## macOS developer input testing
+
+Targeted automated mouse clicks are opt-in. With REAPER closed, set the following
+in its resource-directory `REAPER.ini`, inside the existing `[nvkgui]` section:
+
+```ini
+[nvkgui]
+dev_automation_input=1
+```
+
+Restart REAPER after changing it. Only the value `1` enables event-position input;
+an absent key or any other value leaves the original system-cursor input path in
+place. This hidden setting is local to that installation, is never enabled or
+written by the extension, and is not part of script defaults or the preferences UI.
+Remove the key or set it to `0` with REAPER closed to disable it.
+
+When enabled, button events supply their own position until ImGui processes the
+gesture. Physical cursor movement immediately resumes normal polling. The flag
+does not enable automated dragging or scrolling, and does not affect stock ReaImGui.
+`tests/event_mouse_test.cpp` covers both modes, including normal clicks, movement
+during a drag, release cancellation, focus reset, and the default-off path.
+
 ## Build from source
 
 On macOS this is normally built for you: nvk_API's `./build.sh` runs the Meson

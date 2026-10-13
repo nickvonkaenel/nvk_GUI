@@ -483,6 +483,15 @@ void Settings::setup()
   const char *file {get_ini_file()};
 #endif
 
+#ifdef __APPLE__
+  // Developer-only: do not expose or write this flag through normal preferences.
+  // Read the INI directly (not ExtState), so it is available at extension load.
+  char automationInput[3] {};
+  GetPrivateProfileString(SECTION, "dev_automation_input", "",
+    automationInput, sizeof(automationInput), file);
+  DevAutomationInput = automationInput[0] == '1' && automationInput[1] == '\0';
+#endif
+
   for(const auto &setting : SETTINGS) {
     std::visit([file] (const auto &setting) {
       setting.read(file);
