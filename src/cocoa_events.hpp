@@ -23,6 +23,9 @@
 #include <AppKit/AppKit.h>
 
 class Context;
+class Window;
+
+void updateMouseEventPosition(Window *, NSEvent *);
 
 @interface EventHandler : NSObject {
 @private

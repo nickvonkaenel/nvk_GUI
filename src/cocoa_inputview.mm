@@ -18,6 +18,7 @@
 #include "cocoa_inputview.hpp"
 
 #include "context.hpp"
+#include "cocoa_events.hpp"
 
 #define KeyMap CarbonKeyMap
 #include <Carbon/Carbon.h>
@@ -233,6 +234,7 @@ static int translateKeyCode(NSEvent *event)
   m_windowDragRequested = NO;
   if(m_window->viewport()->Flags & ImGuiViewportFlags_NoFocusOnClick)
     [NSApp preventWindowOrdering];
+  updateMouseEventPosition(m_window, event);
   m_window->mouseDown(ImGuiMouseButton_Left);
 }
 
@@ -258,14 +260,17 @@ static int translateKeyCode(NSEvent *event)
 
 - (void)rightMouseDown:(NSEvent *)event
 {
+  updateMouseEventPosition(m_window, event);
   m_window->mouseDown(ImGuiMouseButton_Right);
 }
 
 - (void)otherMouseDown:(NSEvent *)event
 {
   const auto button {[event buttonNumber]}; // 0-32
-  if(button < ImGuiMouseButton_COUNT)
+  if(button < ImGuiMouseButton_COUNT) {
+    updateMouseEventPosition(m_window, event);
     m_window->mouseDown(button);
+  }
 }
 
 - (const char *)getSwellClass

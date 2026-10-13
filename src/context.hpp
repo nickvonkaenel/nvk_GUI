@@ -19,6 +19,9 @@
 #define REAIMGUI_CONTEXT_HPP
 
 #include "flat_set.hpp"
+#ifdef __APPLE__
+#  include "event_mouse.hpp"
+#endif
 #include "resource.hpp"
 
 #include <chrono>
@@ -77,6 +80,9 @@ public:
 
   // for backends
   void mouseInput(int button, bool down);
+#ifdef __APPLE__
+  void mousePosition(ImGuiViewport *, ImVec2 nativePosition);
+#endif
   void mouseWheel(bool horizontal, float delta);
   void keyInput(ImGuiKey key, bool down);
   void charInput(unsigned int);
@@ -128,6 +134,9 @@ private:
   long saveScreenset(char *data, unsigned long);
 
   ImGuiID m_id;
+#ifdef __APPLE__
+  EventMouseInput m_eventMouse;
+#endif
   char m_stateFlags;
   HCURSOR m_cursor;
   FrameCallback m_frameCallback;

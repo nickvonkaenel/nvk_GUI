@@ -3,6 +3,7 @@ test_src = files([
   'color_test.cpp',
   'compstr_test.cpp',
   'environment.cpp',
+  'event_mouse_test.cpp',
   'function_test.cpp',
   'image_test.cpp',
   'resource_proxy_test.cpp',
@@ -15,6 +16,7 @@ eel_dep   = dependency('EEL2')
 gmock_dep = dependency('gmock_main')
 
 tests = executable('tests', test_src,
+  cpp_args: ['-DTEST_FONT_PATH="' + meson.project_source_root() + '/subprojects/imgui/imgui/misc/fonts/ProggyClean.ttf"'],
   dependencies: [common_dep, eel_dep, gmock_dep],
   link_whole: [src], build_by_default: false) # whole: image decoders self-register
 

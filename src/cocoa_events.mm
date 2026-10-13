@@ -31,6 +31,17 @@
 
 constexpr char GET_WND_CTX {};
 
+void updateMouseEventPosition(Window *window, NSEvent *event)
+{
+  // NSEvent coordinates are window-local points, not backing-store pixels.
+  // Convert through the event's window even when another view owns capture.
+  NSPoint point {[event locationInWindow]};
+  if(NSWindow *source {[event window]})
+    point = [source convertPointToScreen:point];
+  window->context()->mousePosition(window->viewport(),
+    {static_cast<float>(point.x), static_cast<float>(point.y)});
+}
+
 static Context *getWindowContext(NSWindow *window)
 {
   if(Context *(^getContext)() {objc_getAssociatedObject(window, &GET_WND_CTX)}) {
@@ -146,11 +157,13 @@ static Context *getWindowContext(NSWindow *window)
   case NSEventTypeLeftMouseDown:
   case NSEventTypeRightMouseDown:
   case NSEventTypeOtherMouseDown:
+    updateMouseEventPosition(window, event);
     window->mouseDown(button);
     return nil;
   case NSEventTypeLeftMouseUp:
   case NSEventTypeRightMouseUp:
   case NSEventTypeOtherMouseUp:
+    updateMouseEventPosition(window, event);
     window->mouseUp(button);
     return nil;
   default:

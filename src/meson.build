@@ -5,6 +5,7 @@ src_sources = files([
   'context.cpp',
   'docker.cpp',
   'error.cpp',
+  'event_mouse.cpp',
   'font.cpp',
   'font_registry.cpp',
   'function.cpp',

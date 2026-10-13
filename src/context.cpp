@@ -440,6 +440,11 @@ void Context::updateMouseData()
   }
 
   ImVec2 pos {Platform::getCursorPos()};
+#ifdef __APPLE__
+  if(m_draggedFiles.empty() && !(m_stateFlags & DnD_Cancelled) &&
+      !m_eventMouse.shouldPoll(m_imgui.get(), pos))
+    return;
+#endif
 
   ImGuiID hoveredViewport {0};
   ImGuiViewport *viewportForPos {nullptr};
@@ -463,6 +468,21 @@ void Context::updateMouseData()
 
   io.AddMousePosEvent(pos.x, pos.y);
 }
+
+#ifdef __APPLE__
+void Context::mousePosition(ImGuiViewport *viewport, ImVec2 nativePosition)
+{
+  if(!m_draggedFiles.empty() || m_stateFlags & DnD_Cancelled)
+    return;
+
+  const ImVec2 cursor {Platform::getCursorPos()};
+  Platform::scalePosition(&nativePosition, false, viewport);
+  const ImRect bounds {viewport->Pos,
+    {viewport->Pos.x + viewport->Size.x, viewport->Pos.y + viewport->Size.y}};
+  m_eventMouse.position(m_imgui.get(),
+    bounds.Contains(nativePosition) ? viewport->ID : 0, nativePosition, cursor);
+}
+#endif
 
 void Context::mouseInput(int button, const bool down)
 {
@@ -775,6 +795,7 @@ void Context::clearFocus()
   m_imgui->IO.MousePos = mousePos;
 #ifdef __APPLE__
   m_stateFlags &= ~(RCE_Armed | RCE_Active);
+  m_eventMouse.reset();
 #endif
 
   HWND capture {Platform::getCapture()};
